@@ -175,8 +175,8 @@ function Index() {
   return (
     <main className="relative min-h-screen bg-gradient-app overflow-hidden">
       {/* Decorative blobs */}
-      <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-primary-glow/20 blur-3xl" />
+      {/* <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-primary/30 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-primary-glow/20 blur-3xl" /> */}
 
       <div className="relative mx-auto flex h-screen max-w-3xl flex-col px-3 sm:px-6 py-4 sm:py-6">
         {/* Header */}
