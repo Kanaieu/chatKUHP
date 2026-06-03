@@ -13,17 +13,10 @@ export const Route = createFileRoute("/")({
 });
 
 const STEP_TEMPLATES: { label: string; detail: string; ms: number }[] = [
-  { label: "Understanding your request", detail: "Parsing intent and key entities", ms: 700 },
-  { label: "Gathering context", detail: "Reviewing conversation history & knowledge", ms: 900 },
-  { label: "Planning a response", detail: "Outlining structure and reasoning steps", ms: 800 },
-  { label: "Drafting answer", detail: "Composing a clear, concise reply", ms: 700 },
-];
-
-const RESPONSES = [
-  "Great question! Here's what I'm thinking — break it down into smaller pieces and tackle them one at a time. That usually makes the path forward much clearer.",
-  "Absolutely. Based on the context, I'd recommend a minimalist approach: focus on the core feature first, then layer polish on top once it feels right.",
-  "Happy to help with that. The key insight is that good design starts with constraints, not options. Pick one direction and execute it with conviction.",
-  "Let's think it through together. What you're describing usually has a few moving parts — start with the data flow, then the UI, then the edge cases.",
+  { label: "Mengambil Pasal-Pasal Ayat Terkait", detail: "Mengambil beberapa", ms: 700 },
+  { label: "Memilih Pasal Ayat Relevan", detail: "Memilih salah satu yang terbaik", ms: 900 },
+  { label: "Mengambil data pendukung", detail: "Mengambil pasal lainnya", ms: 800 },
+  { label: "Menyusun jawaban", detail: "Menyusun dari semua pasal yang diambil", ms: 700 },
 ];
 
 function Index() {
@@ -94,23 +87,23 @@ function Index() {
       // 2. Extract data safely
       const resData = data.response || {};
       const responseText = resData.answer || data.reply || data.message || "No response received.";
-      
+
       // 3. Format the real thinking steps based on the backend response
       const realSteps: ThinkingStep[] = [
         {
-           label: "Identified Potential Goals (Pasal)",
-           detail: resData.goal_choices?.length ? resData.goal_choices.join(", ") : "None found",
-           status: "done"
+          label: "Identified Potential Goals (Pasal)",
+          detail: resData.goal_choices?.length ? resData.goal_choices.join(", ") : "None found",
+          status: "done"
         },
         {
-           label: "Selected Relevant Goal",
-           detail: resData.chosen_goal || "Unknown",
-           status: "done"
+          label: "Selected Relevant Goal",
+          detail: resData.chosen_goal || "Unknown",
+          status: "done"
         },
         {
-           label: "Evaluated Elements (Postconditions)",
-           detail: resData.used_postconditions?.length ? resData.used_postconditions.join(", ") : "None",
-           status: "done"
+          label: "Evaluated Elements (Postconditions)",
+          detail: resData.used_postconditions?.length ? resData.used_postconditions.join(", ") : "None",
+          status: "done"
         }
       ];
 
