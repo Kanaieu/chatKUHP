@@ -22,7 +22,7 @@ const Chatbot: React.FC = () => {
 
     try {
       // Adjust the port if your backend runs on a different one (e.g., 5000, 8080)
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

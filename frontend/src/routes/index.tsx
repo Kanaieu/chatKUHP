@@ -13,10 +13,10 @@ export const Route = createFileRoute("/")({
 });
 
 const STEP_TEMPLATES: { label: string; detail: string; ms: number }[] = [
-  { label: "Mengambil Pasal-Pasal Ayat Terkait", detail: "Mengambil beberapa", ms: 700 },
-  { label: "Memilih Pasal Ayat Relevan", detail: "Memilih salah satu yang terbaik", ms: 900 },
-  { label: "Mengambil data pendukung", detail: "Mengambil pasal lainnya", ms: 800 },
-  { label: "Menyusun jawaban", detail: "Menyusun dari semua pasal yang diambil", ms: 700 },
+  { label: "Identified Potential Goals (Pasal)", detail: "Mengambil beberapa pasal terkait", ms: 700 },
+  { label: "Selected Relevant Goal", detail: "Memilih salah satu pasal terbaik", ms: 900 },
+  { label: "Evaluated Elements (Postconditions)", detail: "Menganalisa pasal dengan kriteria yang cocok", ms: 800 },
+  { label: "Drafting Answer", detail: "Menyusun dari semua pasal yang diambil", ms: 700 },
 ];
 
 function Index() {
@@ -75,7 +75,7 @@ function Index() {
 
     try {
       // 1. Fire the actual backend request and get the JSON data
-      const data = await fetch('http://localhost:8000/chat', {
+      const data = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text }),
