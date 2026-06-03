@@ -1,0 +1,45 @@
+import os
+import json
+from dotenv import load_dotenv
+from gog_data import GOGKB
+
+# Load environment variables (API Key)
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+def main():
+    print("Initializing GOGKB and starting build process...")
+    # Change paths as necessary based on your working directory
+    
+    # Check if the saved KB exists, and load it
+    kb_path = "gog_graph/kb_kuhp.pkl"
+    if os.path.exists(kb_path):
+        print(f"Loading existing KB from {kb_path}...")
+        kb = GOGKB.load_kb(kb_path)
+    else:
+        print("Saved KB not found. Creating a new one...")
+        kb = GOGKB(embedding_model="gemini-embedding-001")
+    
+    kb.doc_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "knowledge"))
+    print("Using knowledge directory:", kb.doc_dir)
+
+    # Only build if the KB is empty
+    if len(kb.nodes) == 0:
+        kb.build_kb()
+    
+    print(f"Successfully loaded Knowledge Base!")
+    print(f"Total Nodes: {len(kb.nodes)}")
+    print(f"Total Edges: {len(kb.edges)}")
+
+    # Quick DFS Test
+    test_target = "KUHP Pasal 23 Ayat 2"
+    if test_target in kb.name2node:
+        print(f"\nTesting DFS tree generation for: {test_target}")
+        trees = kb.dfs(test_target)
+        print(f"Generated {len(trees)} alternative reasoning paths.")
+        
+        if trees:
+            print("\n--- DFS Tree Contents (Path 1) ---")
+            print(json.dumps(trees[0], indent=4))
+    
+if __name__ == "__main__":
+    main()
