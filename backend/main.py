@@ -18,6 +18,8 @@ app = FastAPI()
 origins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "https://www.gogkuhp.my.id",
+    "https://gogkuhp.my.id"
 ]
 
 app.add_middleware(
