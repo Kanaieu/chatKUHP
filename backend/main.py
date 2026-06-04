@@ -15,6 +15,13 @@ except Exception:
 
 app = FastAPI()
 
+from fastapi.responses import RedirectResponse
+
+@app.get("/", include_in_schema=False)
+async def root():
+    # Redirect ke halaman dokumentasi
+    return RedirectResponse(url="/docs")
+
 origins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
