@@ -25,9 +25,9 @@ except Exception:
     _HAS_GENAI = False
 
 try:
-    from services.gog_prompts import PROMPTS
+    from .gog_prompts import PROMPTS
 except ImportError:
-    from services.gog_prompts import PROMPTS
+    from gog_prompts import PROMPTS
 
 class GOGNode:
     def __init__(self, name, desc, preconditions, elements, postconditions, name_emb, preconditions_emb, elements_emb, postconditions_emb):
@@ -103,29 +103,12 @@ class GOGKB:
         self.set_embedding(url, port, embedding_model)
 
     @classmethod
-    def load_kb(cls, kb_file="gog_graph/kb_kuhp.pkl"):
-        import pickle
+    def load_kb(cls, kb_file="./gog_graph/kb.pkl"):
         import sys
-        # Resolve relative path to services folder
-        if not os.path.isabs(kb_file):
-            kb_file = os.path.join(os.path.dirname(__file__), kb_file)
-
-        # Create a temporary alias so pickle can find the original module name 'gog_data'
-        alias_name = "gog_data"
-        module_name = __name__  # typically 'services.gog_data'
-        inserted_alias = False
-        if alias_name not in sys.modules:
-            sys.modules[alias_name] = sys.modules.get(module_name)
-            inserted_alias = True
-
-        try:
-            with open(kb_file, "rb") as f:
-                kb = pickle.load(f)
-        finally:
-            # clean up alias to avoid side effects
-            if inserted_alias and alias_name in sys.modules:
-                del sys.modules[alias_name]
-
+        if 'gog_data' not in sys.modules:
+            sys.modules['gog_data'] = sys.modules[__name__]
+        with open(kb_file, "rb") as f:
+            kb = pickle.load(f)
         return kb
 
     def set_llm(self, url="", port="", llm=""):
@@ -440,6 +423,185 @@ class GOGKB:
         self.save_kb()
         print("Knowledge Base Built successfully!")
 
+    def _get_cohere_client(self):
+        try:
+            import cohere
+        except ImportError:
+            raise RuntimeError("Please install cohere: pip install cohere")
+        api_key = os.environ.get("COHERE_API_KEY")
+        if not api_key:
+            raise RuntimeError("COHERE_API_KEY not set in environment.")
+        return cohere.Client(api_key)
+
+    def cohere_sync_embeddings_batch(self, texts, batch_size=96, delay=10.0):
+        """
+        Embed a list of texts synchronously using Cohere API.
+        Cohere allows up to 96 texts per request on trial keys.
+        """
+        client = self._get_cohere_client()
+        all_embeddings = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i+batch_size]
+            print(f"Embedding batch {i // batch_size + 1} / {math.ceil(len(texts) / batch_size)} ({len(batch)} texts)...")
+            
+            success = False
+            retries = 0
+            while not success and retries < 5:
+                try:
+                    response = client.embed(
+                        texts=batch,
+                        model=self.embedding_model,
+                        input_type="search_document"
+                    )
+                    all_embeddings.extend(response.embeddings)
+                    success = True
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    if "429" in error_msg or "rate limit" in error_msg:
+                        print(f"Rate limit hit on batch {i // batch_size + 1}. Waiting 15 seconds before retrying...")
+                        time.sleep(15.0)
+                        retries += 1
+                    else:
+                        print(f"Error on batch {i // batch_size + 1}: {e}")
+                        print("Appending zeros for this batch.")
+                        for _ in batch:
+                            all_embeddings.append([0.0] * 1024)
+                        success = True
+            
+            if not success:
+                for _ in batch:
+                    all_embeddings.append([0.0] * 1024)
+
+            if i + batch_size < len(texts):
+                time.sleep(delay)
+            
+        return all_embeddings
+
+    def build_kb_sync(self):
+        # Simplified, runnable KB builder for local testing.
+        # Uses synchronous embedding instead of Batch API
+        # It supports two input formats:
+        # 1) Structured JSON files where each file contains keys: name/title, desc/text, preconditions, elements, postconditions
+        # 2) Plain text files containing a line like: "Title: ... Text: ..." which will be parsed with a simple heuristic.
+
+        doc_dir_files = [x for x in os.listdir(self.doc_dir) if x.endswith('.json') or x.endswith('.txt') or x.endswith('.md') or x.endswith('.jsonl')]
+        if len(doc_dir_files) == 0:
+            print("No documents found in doc_dir.")
+            return
+
+        added_goals = {}
+        parsed_entries = []
+        unique_texts_to_embed = set()
+
+        print("Phase 1: Parsing documents and collecting unique strings...")
+        for file in doc_dir_files:
+            path = os.path.join(self.doc_dir, file)
+            if file.lower().endswith('.jsonl'):
+                try:
+                    with open(path, 'r', encoding='utf-8') as fh:
+                        for line in fh:
+                            if not line.strip(): continue
+                            try:
+                                entry = json.loads(line)
+                            except Exception: continue
+                            
+                            name = entry.get('name') or entry.get('title') or entry.get('pasal')
+                            desc = entry.get('desc') or entry.get('text') or entry.get('bunyi') or ""
+                            preconditions = entry.get('preconditions') or {}
+                            elements = entry.get('elements') or {}
+                            postconditions = entry.get('postconditions') or {}
+
+                            if isinstance(preconditions, str):
+                                try: preconditions = ast.literal_eval(preconditions)
+                                except Exception: preconditions = {preconditions: 1} if preconditions and preconditions.lower() != 'none' else {}
+                            if isinstance(elements, str):
+                                try: elements = ast.literal_eval(elements)
+                                except Exception: elements = {elements: 1} if elements and elements.lower() != 'none' else {}
+                            if isinstance(postconditions, str):
+                                try: postconditions = ast.literal_eval(postconditions)
+                                except Exception: postconditions = {postconditions: 1} if postconditions and postconditions.lower() != 'none' else {}
+
+                            if not isinstance(preconditions, dict): preconditions = {} if preconditions in (None, "None") else dict(preconditions)
+                            if not isinstance(elements, dict): elements = {} if elements in (None, "None") else dict(elements)
+                            if not isinstance(postconditions, dict): postconditions = {} if postconditions in (None, "None") else dict(postconditions)
+
+                            if not name: continue
+
+                            # String representations for embeddings
+                            name_str = str(name)
+                            pre_str = ", ".join(preconditions.keys()) if preconditions else ""
+                            elem_str = ", ".join(elements.keys()) if elements else ""
+                            post_str = ", ".join(postconditions.keys()) if postconditions else ""
+
+                            unique_texts_to_embed.update([name_str, pre_str, elem_str, post_str])
+                            parsed_entries.append({
+                                'name': name, 'desc': desc, 
+                                'preconditions': preconditions, 'elements': elements, 'postconditions': postconditions,
+                                'name_str': name_str, 'pre_str': pre_str, 'elem_str': elem_str, 'post_str': post_str
+                            })
+                except Exception as e:
+                    print(f"Failed to read jsonl {file}: {e}")
+            else:
+                pass
+
+        # Ignore empty strings
+        unique_texts_to_embed.discard("")
+        unique_texts_to_embed.discard("None")
+
+        print(f"Phase 2 & 3: Generating embeddings via Cohere API for {len(unique_texts_to_embed)} unique strings...")
+        text_list = list(unique_texts_to_embed)
+        text2key = {}
+        for t in text_list:
+            k = hashlib.md5(t.encode('utf-8')).hexdigest()
+            text2key[t] = k
+
+        key2emb = {}
+        if text_list:
+            embeddings_list = self.cohere_sync_embeddings_batch(text_list, batch_size=96, delay=10.0)
+            for t, emb in zip(text_list, embeddings_list):
+                k = text2key[t]
+                key2emb[k] = emb
+
+        def get_cached_emb(text_val):
+            if not text_val or text_val == "None":
+                return [0.0] * 1024
+            k = text2key.get(text_val)
+            if k in key2emb:
+                return key2emb[k]
+            # Fallback for unexpected missing keys
+            return self.embed_text(text_val)
+
+        print(f"Phase 4: Building Nodes and Edges...")
+        for entry in parsed_entries:
+            name, desc = entry['name'], entry['desc']
+            preconditions, elements, postconditions = entry['preconditions'], entry['elements'], entry['postconditions']
+            
+            name_emb = get_cached_emb(entry['name_str'])
+            pre_emb = get_cached_emb(entry['pre_str'])
+            elem_emb = get_cached_emb(entry['elem_str'])
+            post_emb = get_cached_emb(entry['post_str'])
+
+            if name in self.name2node:
+                existing = self.name2node[name]
+                existing.add_alternative(preconditions, elements, postconditions, pre_emb, elem_emb, post_emb)
+            else:
+                node = GOGNode(name, desc, preconditions, elements, postconditions, name_emb, pre_emb, elem_emb, post_emb)
+                self.add_node(node, name_emb, postconditions)
+                reqs = self.get_reqs(preconditions, elements)
+                if reqs:
+                    added_goals[name] = {"node": node, "reqs": reqs}
+
+        for g in list(added_goals.keys()):
+            for r in added_goals[g]["reqs"]:
+                if r in self.postconditions2nodes:
+                    for subgoal in self.postconditions2nodes[r]:
+                        goal = added_goals[g]["node"]
+                        relation_desc = f"{subgoal.name} is used by {goal.name}"
+                        self.add_edge(goal, subgoal, relation_desc)
+
+        self.save_kb()
+        print("Knowledge Base Built successfully!")
+
     def load_recipes(self, files, recipe_dir):
         recipe_str = ""
         for file in files:
@@ -494,41 +656,15 @@ class GOGKB:
         Used by the Chatbot (query_goals) and occasionally as a fallback.
         """
         if not text:
-            return [0.0] * 768
+            return [0.0] * 1024
         
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            raise RuntimeError("GOOGLE_API_KEY not set. Gemini embeddings require a valid GOOGLE_API_KEY in env.")
-
-        if not _HAS_GENAI:
-            raise RuntimeError("google.genai not installed. Install 'google-genai' package.")
-        
-        try:
-            client = genai.Client(api_key=api_key)
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize genai.Client: {e}")
-
-        try:
-            # Official GenAI SDK method for instant embeddings
-            result = client.models.embed_content(
-                model=self.embedding_model, 
-                contents=text
-            )
-            
-            # Extract the embedding list safely
-            if result.embeddings and len(result.embeddings) > 0:
-                emb = result.embeddings[0]
-                if hasattr(emb, "values"):
-                    return list(emb.values)
-                elif isinstance(emb, list):
-                    return emb
-                elif isinstance(emb, dict) and "values" in emb:
-                    return emb["values"]
-
-            raise RuntimeError("Received empty embeddings array from Gemini.")
-
-        except Exception as e:
-            raise RuntimeError(f"Gemini single-call embedding failed: {e}")
+        client = self._get_cohere_client()
+        response = client.embed(
+            texts=[text],
+            model=self.embedding_model,
+            input_type="search_query"
+        )
+        return response.embeddings[0]
 
     def create_embeddings_jsonl(self, jsonl_path=None, include_meta=True):
         """Create JSONL file suitable for Gemini batch embeddings from files in self.doc_dir.

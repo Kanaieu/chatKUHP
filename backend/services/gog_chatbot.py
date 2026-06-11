@@ -60,7 +60,7 @@ class PlanningModel:
         self.goal_kb = GOGKB.load_kb(kb_file=kb_file)
         self.goal_kb.set_llm(url="", port="", llm=llm_model)
         
-        self.goal_kb.set_embedding(embedding_model="gemini-embedding-001")
+        self.goal_kb.set_embedding(embedding_model="embed-multilingual-v3.0")
         print(f"[CHATBOT] Knowledge Base berhasil diload.", flush=True)
         
     def _call_llm_with_retry(self, prompt, config, max_retries=5):
