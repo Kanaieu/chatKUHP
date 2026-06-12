@@ -342,7 +342,7 @@ class GOGKB:
                             if not name: continue
 
                             # String representations for embeddings
-                            name_str = str(name)
+                            name_str = f"{name}. {desc}"
                             pre_str = ", ".join(preconditions.keys()) if preconditions else ""
                             elem_str = ", ".join(elements.keys()) if elements else ""
                             post_str = ", ".join(postconditions.keys()) if postconditions else ""
@@ -528,7 +528,7 @@ class GOGKB:
                             if not name: continue
 
                             # String representations for embeddings
-                            name_str = str(name)
+                            name_str = f"{name}. {desc}"
                             pre_str = ", ".join(preconditions.keys()) if preconditions else ""
                             elem_str = ", ".join(elements.keys()) if elements else ""
                             post_str = ", ".join(postconditions.keys()) if postconditions else ""

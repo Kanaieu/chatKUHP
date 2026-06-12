@@ -36,16 +36,27 @@ def _encode_image(image_path: str) -> str:
     return a
 
 class PlanningModel:
-    def __init__(self, llm_model="gemini-2.5-flash", top_k=3, kb_file="gog_graph/kb_kuhp.pkl") -> None:
+    def __init__(self, llm_model="command-a-plus-05-2026", top_k=3, kb_file="gog_graph/kb_kuhp.pkl") -> None:
         self.llm_model = llm_model
         self.temperature = 0.0
         self.top_k = top_k
         
-        # Initialize Gemini Client
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY not found in .env")
-        self.client = genai.Client(api_key=api_key)
+        # Initialize LLM Clients
+        gemini_api_key = os.environ.get("GOOGLE_API_KEY")
+        if gemini_api_key:
+            self.client = genai.Client(api_key=gemini_api_key)
+        else:
+            self.client = None
+            
+        cohere_api_key = os.environ.get("COHERE_API_KEY")
+        if cohere_api_key:
+            import cohere
+            try:
+                self.co_client = cohere.ClientV2(api_key=cohere_api_key)
+            except AttributeError:
+                self.co_client = cohere.Client(api_key=cohere_api_key)
+        else:
+            self.co_client = None
 
         # Resolve KB path relative to this services folder
         if not os.path.isabs(kb_file):
@@ -63,28 +74,144 @@ class PlanningModel:
         self.goal_kb.set_embedding(embedding_model="embed-multilingual-v3.0")
         print(f"[CHATBOT] Knowledge Base berhasil diload.", flush=True)
         
-    def _call_llm_with_retry(self, prompt, config, max_retries=5):
-        """Helper untuk melakukan retry jika terkena limit 429 API Gemini."""
-        delay = 15  # UBAH DARI 2 MENJADI 15 DETIK
+    def _call_llm_with_retry(self, prompt, system_instruction=None, temperature=0.0, is_json=False, response_schema=None, max_retries=5):
+        """Helper untuk memanggil LLM (Gemini/Cohere) dengan retry dan tools disabled."""
+        delay = 15
         for attempt in range(max_retries):
             try:
-                print(f"[LLM] Memanggil API Gemini (Attempt {attempt + 1}/{max_retries})...", flush=True)
-                response = self.client.models.generate_content(
-                    model=self.llm_model,
-                    contents=prompt,
-                    config=config
-                )
-                print(f"[LLM] Berhasil memanggil API Gemini.", flush=True)
-                return response
+                print(f"[LLM] Memanggil API {self.llm_model} (Attempt {attempt + 1}/{max_retries})...", flush=True)
+                
+                if "command" in self.llm_model.lower(): # Cohere
+                    if not self.co_client:
+                        raise ValueError("COHERE_API_KEY not found in .env")                        
+                    if type(self.co_client).__name__ == "ClientV2":
+                        messages = []
+                        if system_instruction:
+                            sys_content = system_instruction
+                            if is_json:
+                                sys_content += "\n\nOutput MUST be valid JSON."
+                            messages.append({"role": "system", "content": sys_content})
+                        else:
+                            if is_json:
+                                messages.append({"role": "system", "content": "Output MUST be valid JSON."})
+                                
+                        messages.append({"role": "user", "content": prompt})
+                        
+                        kwargs = {
+                            "model": self.llm_model,
+                            "messages": messages,
+                            "temperature": temperature,
+                        }
+                        if is_json:
+                            kwargs["response_format"] = {"type": "json_object"}
+                            
+                        response = self.co_client.chat(**kwargs)
+                        print(f"[LLM] Berhasil memanggil API Cohere (V2).", flush=True)
+                        
+                        class DummyResponse:
+                            def __init__(self, text):
+                                self.text = text
+                        
+                        # Cohere V2 SDK parses text inside message.content
+                        res_text = ""
+                        try:
+                            if hasattr(response, "message") and hasattr(response.message, "content"):
+                                for item in response.message.content:
+                                    if getattr(item, "type", "") == "text" or type(item).__name__ == "TextAssistantMessageResponseContentItem":
+                                        res_text = getattr(item, "text", "")
+                                        break
+                                if not res_text:
+                                    # Fallback if no text item found
+                                    res_text = str(response.message.content[-1])
+                            else:
+                                res_text = str(response)
+                        except Exception:
+                            res_text = str(response)
+                            
+                        return DummyResponse(res_text)
+                        
+                    else: # Cohere V1 fallback
+                        kwargs = {
+                            "message": prompt,
+                            "model": self.llm_model,
+                            "temperature": temperature,
+                        }
+                        if system_instruction:
+                            kwargs["preamble"] = system_instruction
+                            
+                        if is_json:
+                            if "preamble" in kwargs:
+                                kwargs["preamble"] += "\n\nOutput MUST be valid JSON."
+                            else:
+                                kwargs["preamble"] = "Output MUST be valid JSON."
+                                
+                        response = self.co_client.chat(**kwargs)
+                        print(f"[LLM] Berhasil memanggil API Cohere (V1).", flush=True)
+                        
+                        class DummyResponse:
+                            def __init__(self, text):
+                                self.text = text
+                        return DummyResponse(response.text)
+                    
+                else: # Gemini
+                    from google.genai import types
+                    
+                    # Disable tools to reduce bias
+                    tools = []
+                    
+                    config_kwargs = {
+                        "temperature": temperature,
+                        "tools": tools
+                    }
+                    if system_instruction:
+                        config_kwargs["system_instruction"] = system_instruction
+                    if is_json:
+                        config_kwargs["response_mime_type"] = "application/json"
+                    if response_schema:
+                        config_kwargs["response_schema"] = response_schema
+                        
+                    config = types.GenerateContentConfig(**config_kwargs)
+                    
+                    response = self.client.models.generate_content(
+                        model=self.llm_model,
+                        contents=prompt,
+                        config=config
+                    )
+                    print(f"[LLM] Berhasil memanggil API Gemini.", flush=True)
+                    return response
             except Exception as e:
-                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e).upper():
-                    print(f"[LLM WARNING] Rate limit 429 tercapai. Menunggu {delay} detik agar kuota per menit ter-reset...", flush=True)
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e).upper() or "rate limit" in str(e).lower():
+                    print(f"[LLM WARNING] Rate limit tercapai. Menunggu {delay} detik...", flush=True)
                     if attempt < max_retries - 1:
                         time.sleep(delay)
                         delay = min(delay + 5, 30)
                         continue
                 print(f"[LLM ERROR] Gagal memanggil API: {e}", flush=True)
                 raise e
+
+    def _rewrite_query(self, task: str) -> str:
+        prompt = (
+            "Anda adalah asisten hukum. Tugas Anda adalah meringkas fakta kejadian dari cerita pengguna menjadi 1-2 kalimat padat.\n"
+            "Fokuskan ringkasan pada 'perbuatan/tindakan spesifik yang ditanyakan status hukumnya oleh pengguna'.\n"
+            "Jangan buang peran pengguna dalam cerita tersebut (misalnya jika pengguna menerima sesuatu, sebutkan pengguna menerima sesuatu).\n"
+            "Abaikan emosi, nama spesifik, atau ancaman yang tidak relevan secara hukum.\n\n"
+            "PENTING: Di akhir ringkasan, tambahkan 2-3 'Kata Kunci Hukum Pidana' yang merupakan terjemahan formal dari perbuatan tersebut "
+            "(misalnya: Penadahan, Pencurian, Penggelapan, Barang Bukti, dll) agar mudah dicari di KUHP.\n\n"
+            f"Cerita Pengguna:\n{task}\n\n"
+            "Inti Perbuatan Hukum & Kata Kunci:"
+        )
+        try:
+            print(f"[LLM] Melakukan Query Rewriting...", flush=True)
+            response = self._call_llm_with_retry(
+                prompt=prompt,
+                temperature=0.0
+            )
+            rewritten_task = response.text.strip()
+            print(f"[LLM] Hasil Query Rewriting: {rewritten_task}", flush=True)
+            return rewritten_task
+        except Exception as e:
+            print(f"[LLM ERROR] Gagal melakukan query rewriting: {e}", flush=True)
+            return task
 
     def retrieve(
         self,
@@ -95,7 +222,11 @@ class PlanningModel:
         Phase 1: Identify which KUHP Article (Pasal) applies to the user's case.
         """
         print(f"[PHASE 1] Memulai retrieve subgoals...", flush=True)
-        relevant_goals, _ = self.goal_kb.query_goals(task, top_k=self.top_k)
+        
+        # LLM Query Rewriting to remove Semantic Noise
+        rewritten_task = self._rewrite_query(task)
+        
+        relevant_goals, _ = self.goal_kb.query_goals(rewritten_task, top_k=self.top_k)
         print(f"[PHASE 1] Ditemukan {len(relevant_goals)} kandidat goals.", flush=True)
 
         context_info = ""
@@ -119,11 +250,9 @@ class PlanningModel:
                 print(f"[PHASE 1] Melakukan inferensi goal yang paling cocok...", flush=True)
                 response = self._call_llm_with_retry(
                     prompt=prompt_text,
-                    config=types.GenerateContentConfig(
-                        temperature=self.temperature,
-                        response_mime_type="application/json",
-                        response_schema=GoalInferenceSchema,
-                    )
+                    temperature=self.temperature,
+                    is_json=True,
+                    response_schema=GoalInferenceSchema
                 )
                 
                 resp_text = response.text.strip()
@@ -177,9 +306,13 @@ class PlanningModel:
         # 2. Construct the Legal Prompt
         system_prompt = (
             "You are an expert Indonesian Legal AI Assistant (Ahli Hukum Pidana).\n"
-            "Analyze the user's case based carefully on the provided Legal Context.\n"
+            "Analyze the user's case carefully based on the provided Legal Context.\n"
             "The Legal Context contains the main Article (Pasal) and its required Sub-Articles (Subgoals).\n"
-            "Format your answer cleanly, clearly state which Elements (Unsur) match the case, and conclude if the Article applies."
+            "Please create the answer in markdown format.\n\n"
+            "STRUKTURKAN JAWABAN ANDA PERSIS SEPERTI INI:\n"
+            "1. **Inti Kesimpulan**: (Sampaikan di awal apakah perbuatan pengguna melanggar pasal tersebut atau tidak)\n"
+            "2. **Saran Praktis**: (Langkah hukum atau antisipasi apa yang sebaiknya dilakukan pengguna)\n"
+            "3. **Ringkasan Fakta & Analisis Unsur**: (Buat ringkasan fakta kasus dan bedah satu per satu unsur pasalnya, apakah terpenuhi atau tidak)\n"
         )
 
         user_content = (
@@ -195,10 +328,8 @@ class PlanningModel:
             # Menggunakan helper retry
             response = self._call_llm_with_retry(
                 prompt=user_content,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=self.temperature,
-                )
+                system_instruction=system_prompt,
+                temperature=self.temperature
             )
             print(f"[PHASE 2] Response akhir berhasil disusun.", flush=True)
             return {

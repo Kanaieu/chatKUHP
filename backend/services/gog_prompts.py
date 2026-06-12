@@ -446,82 +446,43 @@ List of relationships:
 Refine the given list of relationships as instructed using the given list of goals, and return ONLY the updated list in the same format (do not put square brackets around the list). Do not generate any explanation, introduction, or extra text.
 """
 
-PROMPTS["goal_inference"] = """You are a MineCraft game expert and you can guide agents to complete complex tasks. For a given game screen, task, and context information, you need to complete "goal inference" and "visual inference".
-The context information is a set of possible goals to choose from for "goal inference".
-"goal inference": According to the task, you need to select the goal from given options that best matches the given query.
-"visual inference": According to the game screen, you need to infer the following aspects: health bar, food bar, hotbar, environment.
+PROMPTS["goal_inference"] = """Anda adalah Ahli Hukum Pidana Indonesia. Tugas Anda adalah mencocokkan cerita/fakta kejadian dari pengguna dengan opsi Pasal KUHP yang paling relevan.
 
-[Example 1]
-<task>: make a stone sword
+Berikut adalah beberapa pilihan Pasal KUHP yang berhasil ditemukan oleh sistem pencarian. Anda harus melakukan "goal inference" (penarikan kesimpulan pasal).
+
+[Contoh]
+<task>: Seseorang meminjam motor teman saya dengan alasan mau pergi beli makan sebentar. Tapi motor tersebut malah dibawa kabur dan dijual ke luar kota.
 <context>:
 Option 1:
 {{
-    "name": "craft a stone pickaxe",
-    "description": "Crafts a stone pickaxe, which is more durable than a wooden pickaxe and can be used to mine iron ore.",
-    "postconditions": {{"stone_pickaxe": 1}}
+    "nama_pasal": "KUHP Pasal 480",
+    "bunyi_pasal": "Barangsiapa dengan sengaja menerima, menyimpan, atau menyembunyikan barang yang diketahui berasal dari kejahatan...",
+    "prasyarat": {{}},
+    "unsur_tindak_pidana": {{"menerima_barang_curian": 1}},
+    "sanksi_akibat_hukum": {{"pidana_penjara": 1}}
 }}
 
 Option 2:
 {{
-    "name": "craft a wooden sword",
-    "description": "Crafts a wooden sword, which has 4 attack damage and has a durability of 59. A sword is a melee weapon that is mainly used to damage entities and for cutting cobwebs or bamboo.",
-    "postconditions": {{"wooden_sword": 1}}
-}}
-
-Option 3:
-{{
-    "name": "craft a stone sword",
-    "description": "Crafts a stone sword, which has 5 attack damage and has a durability of 131. A sword is a melee weapon that is mainly used to damage entities and for cutting cobwebs or bamboo.",
-    "postconditions": {{"stone_sword": 1}}
+    "nama_pasal": "KUHP Pasal 372",
+    "bunyi_pasal": "Barangsiapa dengan sengaja dan melawan hukum memiliki barang sesuatu yang seluruhnya atau sebagian adalah kepunyaan orang lain, tetapi yang ada dalam kekuasaannya bukan karena kejahatan...",
+    "prasyarat": {{}},
+    "unsur_tindak_pidana": {{"menguasai_barang_orang_lain_secara_sah_lalu_dimiliki": 1}},
+    "sanksi_akibat_hukum": {{"pidana_penjara": 1}}
 }}
 
 Output:
 {{
-    "goal inference": "craft a stone sword",
-    "visual inference": {{
-        "health bar": "full",
-        "food bar": "full",
-        "hotbar": "empty",
-        "environment": "forest"
-    }}
+    "goal inference": "KUHP Pasal 372"
 }}
 
-[Example 2]
-<task>: create an iron pickaxe
-<context>:
-Option 1:
-{{
-    "name": "craft an iron sword",
-    "description": "Crafts an iron sword, which is a weapon that can be used to fight and damage vairous entities.",
-    "postconditions": {{"iron_sword": 1}}
-}}
-
-Option 2:
-{{
-    "name": "craft an iron pickaxe",
-    "description": "Crafts an iron pickaxe, which is more durable than a stone pickaxe and can be used to mine various materials.",
-    "postconditions": {{"iron_pickaxe": 1}}
-}}
-
-Option 3:
-{{
-    "name": "craft a stone pickaxe",
-    "description": "Crafts a stone pickaxe, which is more durable than a wooden pickaxe and can be used to mine iron ore.",
-    "postconditions": {{"stone_pickaxe": 1}}
-}}
-
-Output:
-{{
-    "goal inference": "craft an iron pickaxe",
-    "visual inference": {{
-        "health bar": "full",
-        "food bar": "full",
-        "hotbar": "empty",
-        "environment": "desert"
-    }}
-}}
-
-Here is a game screen and task, you MUST respond in JSON format as shown in the example outputs WITHOUT further explanation, introduction, or extra text. Complete "goal inference" by setting it to the value of the "name" of the option that best matches the given task as shown in the example. Other fields should be completed based on the given game screen.
+Tugas Anda:
+Berdasarkan <task> (pertanyaan/kasus) dari pengguna, pilih HANYA SATU "nama_pasal" dari <context> opsi yang diberikan yang paling tepat secara hukum. 
+ATURAN SANGAT KETAT:
+1. Anda HANYA boleh memilih nama pasal yang persis ada di dalam <context>.
+2. DILARANG KERAS menyebutkan atau memilih pasal di luar opsi <context> meskipun menurut Anda ada pasal lain yang lebih tepat (misalnya dilarang menggunakan pasal KUHP lama jika tidak ada di opsi).
+3. Jika menurut Anda tidak ada opsi yang 100% cocok, pilih salah satu opsi yang "paling mendekati" atau "paling masuk akal" dari opsi yang tersedia.
+4. Anda WAJIB merespons HANYA dalam format JSON persis seperti contoh, TANPA penjelasan, pendahuluan, atau teks tambahan apa pun.
 
 <task>: {task}
 <context>:
