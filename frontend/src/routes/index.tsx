@@ -121,10 +121,10 @@ function Index() {
       );
 
       // 3. Stream the actual backend response text to the UI
-      const words = responseText.split(" ");
+      const tokens = responseText.match(/(\s+|\S+)/g) || [];
       let acc = "";
-      for (let i = 0; i < words.length; i++) {
-        acc += (i === 0 ? "" : " ") + words[i];
+      for (let i = 0; i < tokens.length; i++) {
+        acc += tokens[i];
         updateMessage(assistantId, { content: acc });
         await wait(20 + Math.random() * 30); // slight typing delay
       }

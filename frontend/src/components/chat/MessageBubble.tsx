@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Sparkles, User, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ThinkingSteps, type ThinkingStep } from "./ThinkingSteps";
 
 export type ChatMessage = {
@@ -33,15 +34,23 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
         {(message.content || message.isStreaming) && (
           <div
             className={cn(
-              "px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words",
+              "px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
               isUser
-                ? "bg-gradient-primary text-primary-foreground rounded-br-md shadow-lg"
-                : "glass text-foreground rounded-bl-md",
+                ? "bg-gradient-primary text-primary-foreground rounded-br-md shadow-lg whitespace-pre-wrap"
+                : "glass text-foreground rounded-bl-md prose prose-sm dark:prose-invert max-w-none",
             )}
           >
-            {message.content}
-            {message.isStreaming && (
-              <span className="inline-block ml-0.5 w-1.5 h-4 align-middle bg-current opacity-70 animate-pulse rounded-sm" />
+            {isUser ? (
+              <>
+                {message.content}
+                {message.isStreaming && (
+                  <span className="inline-block ml-0.5 w-1.5 h-4 align-middle bg-current opacity-70 animate-pulse rounded-sm" />
+                )}
+              </>
+            ) : (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content + (message.isStreaming ? " ▍" : "")}
+              </ReactMarkdown>
             )}
           </div>
         )}
