@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic
+fastapi[all]
+scikit-learn
+numpy
+google-genai
+requests
+openai
+tiktoken
+tqdm
+cohere

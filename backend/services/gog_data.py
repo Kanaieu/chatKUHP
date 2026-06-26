@@ -797,20 +797,100 @@ class GOGKB:
         return key2emb
 
     # Return the top-k nodes that have goal names most similar to the query
-    def query_goals(self, query, top_k=5):
+    def query_goals(self, query, top_k=5,
+                w_text=0.5, w_pre=0.2, w_elem=0.3, w_post=0.0):
         embed_query = self.embed_text(query)
-        similarities = [x[0] for x in cosine_similarity(self.goals_emb, [embed_query])]
-
-        # Get top-k similarities (unordered)
-        sim_idxs = [i for i in np.argpartition(similarities, -top_k)[-top_k:]]
-        sim_values = [similarities[i] for i in sim_idxs]
-        top = [self.goals_emb[i] for i in sim_idxs]
-
-        nodes = []
-        for emb in top:
-            nodes.append(self.emb2node[tuple(emb)])
-
+        
+        scores = []
+        for node in self.nodes:
+            # Cosine similarity per komponen
+            sim_text = cosine_similarity([node.name_emb], [embed_query])[0][0]
+            
+            # Preconditions: ambil max dari semua alternatif
+            sim_pre = max(
+                cosine_similarity([emb], [embed_query])[0][0]
+                for emb in node.preconditions_emb
+            ) if node.preconditions_emb and any(e for e in node.preconditions_emb) else 0.0
+            
+            sim_elem = max(
+                cosine_similarity([emb], [embed_query])[0][0]
+                for emb in node.elements_emb
+            ) if node.elements_emb and any(e for e in node.elements_emb) else 0.0
+            
+            sim_post = max(
+                cosine_similarity([emb], [embed_query])[0][0]
+                for emb in node.postconditions_emb
+            ) if node.postconditions_emb and any(e for e in node.postconditions_emb) else 0.0
+            
+            # Weighted composite score
+            total = w_text*sim_text + w_pre*sim_pre + w_elem*sim_elem + w_post*sim_post
+            scores.append(total)
+        
+        sim_idxs = [i for i in np.argpartition(scores, -top_k)[-top_k:]]
+        sim_values = [scores[i] for i in sim_idxs]
+        nodes = [self.nodes[i] for i in sim_idxs]
+        
         return nodes, sim_values
+    
+    def reduce_goals(self, trees: list, query_embedding: list = None,
+                 w_precondition: float = 0.5, w_element: float = 0.5) -> dict:
+        """
+        Dari daftar alternative DFS trees, pilih tree yang paling feasible
+        dan relevan dengan konteks kasus user.
+        
+        Padanan KUHP dari reduce_goals() Minecraft:
+        - Minecraft: pilih tree yang materialnya paling tersedia di inventory
+        - KUHP: pilih tree yang unsur hukumnya paling konsisten & lengkap
+        
+        Args:
+            trees: List of tree dicts dari dfs()
+            query_embedding: Embedding dari query user (untuk scoring berbasis kasus)
+            w_precondition: Bobot skor kelengkapan preconditions
+            w_element: Bobot skor kelengkapan elements
+        
+        Returns:
+            best_tree: Dict tree terbaik
+            all_elements: Flat list semua unsur hukum yang ditemukan (setara 'materials list' Minecraft)
+            score: Skor tree terbaik
+        """
+        if not trees:
+            return {}, [], 0.0
+        best_tree = None
+        best_score = -1.0
+        best_elements = []
+        for tree in trees:
+            score = 0.0
+            all_preconditions = []
+            all_elements = []
+            subgoal_count = 0
+            node_count = len(tree)
+            for pasal_name, info in tree.items():
+                # 1. Hitung kelengkapan preconditions (unsur syarat)
+                pre = info.get("preconditions", {})
+                if isinstance(pre, dict):
+                    all_preconditions.extend(pre.keys())
+                    score += w_precondition * len(pre)
+                # 2. Hitung kelengkapan elements (objek hukum)
+                elem = info.get("elements", {})
+                if isinstance(elem, dict):
+                    all_elements.extend(elem.keys())
+                    score += w_element * len(elem)
+                # 3. Bonus: semakin banyak subgoal yang terhubung, semakin lengkap chain-nya
+                subgoal_count += len(info.get("subgoals", []))
+            # Normalisasi skor berdasarkan jumlah node agar tidak bias ke tree yang lebih besar
+            if node_count > 0:
+                score = score / node_count
+            # 4. Bonus tambahan: jika ada query_embedding, ukur relevansi semantik
+            if query_embedding is not None and all_elements:
+                elem_texts = " ".join(all_elements)
+                elem_emb = self.embed_text(elem_texts)
+                semantic_bonus = cosine_similarity([elem_emb], [query_embedding])[0][0]
+                score += 0.3 * semantic_bonus  # weight semantic bonus
+            if score > best_score:
+                best_score = score
+                best_tree = tree
+                best_elements = list(set(all_preconditions + all_elements))  # deduplicated
+        return best_tree, best_elements, best_score
 
     # Returns a list of alternative trees that can achieve the given goal
     # Assume that there's only one way to craft tools

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Brain, Check, Loader2 } from "lucide-react";
+import { ChevronDown, BookOpen, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ThinkingStep = {
@@ -23,11 +23,12 @@ export function ThinkingSteps({ steps, isThinking }: ThinkingStepsProps) {
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-accent/30 transition-colors"
       >
-        <Brain className="h-4 w-4 text-primary" />
+        {/* Buku hukum icon */}
+        <BookOpen className="h-4 w-4 text-primary shrink-0" strokeWidth={1.75} />
         <span className={cn("font-medium", isThinking ? "shimmer-text" : "text-foreground")}>
-          {isThinking ? "Thinking…" : "Thought process"}
+          {isThinking ? "Menganalisis…" : "Proses Analisis Hukum"}
         </span>
-        <span className="text-xs text-muted-foreground ml-auto mr-1">{steps.length} steps</span>
+        <span className="text-xs text-muted-foreground ml-auto mr-1">{steps.length} tahap</span>
         <ChevronDown
           className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")}
         />
@@ -39,7 +40,7 @@ export function ThinkingSteps({ steps, isThinking }: ThinkingStepsProps) {
         )}
       >
         <div className="overflow-hidden">
-          <ol className="px-4 pb-3 pt-1 space-y-2 border-t border-glass-border/50">
+          <ol className="px-4 pb-3 pt-1 space-y-2 border-t border-border/40">
             {steps.map((s, i) => (
               <li key={i} className="flex gap-3 text-sm animate-bubble-in">
                 <div className="mt-0.5 shrink-0">

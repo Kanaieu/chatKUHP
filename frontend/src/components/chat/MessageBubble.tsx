@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Sparkles, User, ChevronDown } from "lucide-react";
+import { Scale, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ThinkingSteps, type ThinkingStep } from "./ThinkingSteps";
@@ -22,11 +22,13 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
         isUser ? "justify-end" : "justify-start",
       )}
     >
+      {/* AI avatar — timbangan keadilan */}
       {!isUser && (
         <div className="shrink-0 h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center shadow-md">
-          <Sparkles className="h-4 w-4 text-primary-foreground" />
+          <Scale className="h-4 w-4 text-primary-foreground" strokeWidth={1.75} />
         </div>
       )}
+
       <div className={cn("flex flex-col max-w-[85%] sm:max-w-[75%]", isUser && "items-end")}>
         {!isUser && message.steps && message.steps.length > 0 && (
           <ThinkingSteps steps={message.steps} isThinking={!!message.isThinking} />
@@ -36,7 +38,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
             className={cn(
               "px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
               isUser
-                ? "bg-gradient-primary text-primary-foreground rounded-br-md shadow-lg whitespace-pre-wrap"
+                ? "bg-gradient-primary text-primary-foreground rounded-br-md shadow-lg whitespace-pre-wrap font-medium"
                 : "glass text-foreground rounded-bl-md prose prose-sm dark:prose-invert max-w-none",
             )}
           >
@@ -55,6 +57,8 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
           </div>
         )}
       </div>
+
+      {/* User avatar */}
       {isUser && (
         <div className="shrink-0 h-8 w-8 rounded-full glass flex items-center justify-center">
           <User className="h-4 w-4 text-foreground" />
