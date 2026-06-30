@@ -8,9 +8,7 @@ import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { MessageBubble, type ChatMessage } from "@/components/chat/MessageBubble";
 import type { ThinkingStep } from "@/components/chat/ThinkingSteps";
 
-export const Route = createFileRoute("/")({
-  component: Index,
-});
+export const Route = createFileRoute("/")({ component: Index });
 
 const STEP_TEMPLATES: { label: string; detail: string; ms: number }[] = [
   { label: "Mengidentifikasi Pasal yang Relevan", detail: "Mengambil beberapa pasal terkait dari KUHP", ms: 700 },
