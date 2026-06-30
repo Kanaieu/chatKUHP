@@ -223,10 +223,10 @@ function Index() {
               {/* Example prompts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 w-full max-w-lg">
                 {[
-                  "Apa sanksi untuk tindak pidana pencurian?",
-                  "Bagaimana hukum penggelapan dalam jabatan?",
-                  "Apa unsur-unsur tindak pidana penipuan?",
-                  "Apa perbedaan pencurian biasa dan pencurian berat?",
+                  "Apa unsur-unsur tindak pidana pembunuhan berencana?",
+                  "Berapa ancaman hukuman penggelapan dalam jabatan?",
+                  "Apa yang dimaksud dengan tindak pidana pemerasan?",
+                  "Jelaskan unsur-unsur penipuan menurut KUHP!",
                 ].map((q) => (
                   <button
                     key={q}
