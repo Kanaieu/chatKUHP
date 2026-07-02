@@ -657,6 +657,12 @@ class GOGKB:
         """
         if not text:
             return [0.0] * 1024
+            
+        if not hasattr(self, "_embed_cache"):
+            self._embed_cache = {}
+            
+        if text in self._embed_cache:
+            return self._embed_cache[text]
         
         client = self._get_cohere_client()
         response = client.embed(
@@ -664,7 +670,9 @@ class GOGKB:
             model=self.embedding_model,
             input_type="search_query"
         )
-        return response.embeddings[0]
+        emb = response.embeddings[0]
+        self._embed_cache[text] = emb
+        return emb
 
     def create_embeddings_jsonl(self, jsonl_path=None, include_meta=True):
         """Create JSONL file suitable for Gemini batch embeddings from files in self.doc_dir.

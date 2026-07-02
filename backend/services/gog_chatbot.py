@@ -191,21 +191,42 @@ class PlanningModel:
 
     def _rewrite_query(self, task: str) -> str:
         prompt = (
-            "Anda adalah pakar hukum pidana Indonesia. Tugas Anda adalah menulis ulang cerita pengguna "
-            "menjadi deskripsi tindak pidana yang formal dan spesifik.\n\n"
+            "Anda adalah asisten hukum pidana Indonesia. "
+            "Identifikasi tindak pidana utama dari cerita pengguna dan tuliskan dalam format berikut:\n\n"
+            "FORMAT OUTPUT (wajib diikuti):\n"
+            "[Nama Tindak Pidana]: [kata kerja aksi kunci 1], [kata kerja aksi kunci 2], [objek hukum]\n\n"
+            "CONTOH OUTPUT:\n"
+            "- Penghasutan: menghasut, mengajak, mendorong orang melakukan tindak pidana di muka umum\n"
+            "- Penodaan bendera negara: merusak, membakar, menginjak-injak, menodai kehormatan bendera negara\n"
+            "- Pemalsuan uang: memalsu, mencetak, mengedarkan mata uang atau uang kertas negara\n"
+            "- Perjudian: menawarkan, memberi kesempatan main judi, menyelenggarakan perjudian tanpa izin\n"
+            "- Penganiayaan hewan: menyakiti, melukai hewan, hubungan seksual dengan hewan\n\n"
             "ATURAN:\n"
-            "1. Tulis 1-2 kalimat yang mendeskripsikan PERBUATAN yang dilakukan (bukan orangnya), "
-            "menggunakan frasa aktif seperti 'perbuatan merusak...', 'tindakan menodai...', 'perbuatan menghasut...'.\n"
-            "2. Frasa harus mencerminkan bagaimana bunyi pasal KUHP ditulis, "
-            "misalnya: 'merusak, merobek, menginjak-injak, atau membakar bendera negara dengan maksud menodai kehormatannya'.\n"
-            "3. Tambahkan nama TINDAK PIDANA formalnya (bukan hanya objek), "
-            "misalnya: 'penodaan bendera negara', 'penghasutan', 'pemalsuan surat', 'perkosaan', 'makar'.\n"
-            "4. JANGAN sebut nama orang, lokasi spesifik, atau detail emosional yang tidak relevan secara hukum.\n"
-            "5. DILARANG KERAS menyebutkan nomor pasal, mengutip bunyi pasal, atau mengarang teks hukum. "
-            "Hanya deskripsikan perbuatan dan nama tindak pidananya saja.\n\n"
+            "1. Output HANYA satu baris mengikuti FORMAT di atas. Tanpa kalimat tambahan.\n"
+            "2. DILARANG menyebutkan nomor pasal atau mengutip teks hukum.\n"
+            "3. Gunakan kata kerja yang biasa dipakai dalam pasal KUHP (memalsu, menodai, menghasut, memperdagangkan, dll).\n\n"
             f"Cerita Pengguna:\n{task}\n\n"
-            "Deskripsi Tindak Pidana Formal:"
+            "Output:"
         )
+
+        # ── PROMPT v2 (TERSIMPAN UNTUK REVERT) ──────────────────────────────
+        # prompt = (
+        #     "Anda adalah pakar hukum pidana Indonesia. Tugas Anda adalah menulis ulang cerita pengguna "
+        #     "menjadi deskripsi tindak pidana yang formal dan spesifik.\n\n"
+        #     "ATURAN:\n"
+        #     "1. Tulis 1-2 kalimat yang mendeskripsikan PERBUATAN yang dilakukan (bukan orangnya), "
+        #     "menggunakan frasa aktif seperti 'perbuatan merusak...', 'tindakan menodai...', 'perbuatan menghasut...'.\n"
+        #     "2. Frasa harus mencerminkan bagaimana bunyi pasal KUHP ditulis, "
+        #     "misalnya: 'merusak, merobek, menginjak-injak, atau membakar bendera negara dengan maksud menodai kehormatannya'.\n"
+        #     "3. Tambahkan nama TINDAK PIDANA formalnya (bukan hanya objek), "
+        #     "misalnya: 'penodaan bendera negara', 'penghasutan', 'pemalsuan surat', 'perkosaan', 'makar'.\n"
+        #     "4. JANGAN sebut nama orang, lokasi spesifik, atau detail emosional yang tidak relevan secara hukum.\n"
+        #     "5. DILARANG KERAS menyebutkan nomor pasal, mengutip bunyi pasal, atau mengarang teks hukum. "
+        #     "Hanya deskripsikan perbuatan dan nama tindak pidananya saja.\n\n"
+        #     f"Cerita Pengguna:\n{task}\n\n"
+        #     "Deskripsi Tindak Pidana Formal:"
+        # )
+        # ────────────────────────────────────────────────────────────────────
         try:
             print(f"[LLM] Melakukan Query Rewriting...", flush=True)
             response = self._call_llm_with_retry(
