@@ -36,7 +36,7 @@ def _encode_image(image_path: str) -> str:
     return a
 
 class PlanningModel:
-    def __init__(self, llm_model="command-a-plus-05-2026", top_k=3, kb_file="gog_graph/kb_kuhp.pkl") -> None:
+    def __init__(self, llm_model="command-a-plus-05-2026", top_k=5, kb_file="gog_graph/kb_kuhp.pkl") -> None:
         self.llm_model = llm_model
         self.temperature = 0.0
         self.top_k = top_k
@@ -191,14 +191,18 @@ class PlanningModel:
 
     def _rewrite_query(self, task: str) -> str:
         prompt = (
-            "Anda adalah asisten hukum. Tugas Anda adalah meringkas fakta kejadian dari cerita pengguna menjadi 1-2 kalimat padat.\n"
-            "Fokuskan ringkasan pada 'perbuatan/tindakan spesifik yang ditanyakan status hukumnya oleh pengguna'.\n"
-            "Jangan buang peran pengguna dalam cerita tersebut (misalnya jika pengguna menerima sesuatu, sebutkan pengguna menerima sesuatu).\n"
-            "Abaikan emosi, nama spesifik, atau ancaman yang tidak relevan secara hukum.\n\n"
-            "PENTING: Di akhir ringkasan, tambahkan 2-3 'Kata Kunci Hukum Pidana' yang merupakan terjemahan formal dari perbuatan tersebut "
-            "(misalnya: Penadahan, Pencurian, Penggelapan, Barang Bukti, dll) agar mudah dicari di KUHP.\n\n"
+            "Anda adalah pakar hukum pidana Indonesia. Tugas Anda adalah menulis ulang cerita pengguna "
+            "menjadi deskripsi tindak pidana yang formal dan spesifik.\n\n"
+            "ATURAN:\n"
+            "1. Tulis 1-2 kalimat yang mendeskripsikan PERBUATAN yang dilakukan (bukan orangnya), "
+            "menggunakan frasa aktif seperti 'perbuatan merusak...', 'tindakan menodai...', 'perbuatan menghasut...'.\n"
+            "2. Frasa harus mencerminkan bagaimana bunyi pasal KUHP ditulis, "
+            "misalnya: 'merusak, merobek, menginjak-injak, atau membakar bendera negara dengan maksud menodai kehormatannya'.\n"
+            "3. Tambahkan nama TINDAK PIDANA formalnya (bukan hanya objek), "
+            "misalnya: 'penodaan bendera negara', 'penghasutan', 'pemalsuan surat', 'perkosaan', 'makar'.\n"
+            "4. JANGAN sebut nama orang, lokasi spesifik, atau detail emosional yang tidak relevan secara hukum.\n\n"
             f"Cerita Pengguna:\n{task}\n\n"
-            "Inti Perbuatan Hukum & Kata Kunci:"
+            "Deskripsi Tindak Pidana Formal:"
         )
         try:
             print(f"[LLM] Melakukan Query Rewriting...", flush=True)

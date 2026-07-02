@@ -798,7 +798,7 @@ class GOGKB:
 
     # Return the top-k nodes that have goal names most similar to the query
     def query_goals(self, query, top_k=5,
-                w_text=0.5, w_pre=0.2, w_elem=0.3, w_post=0.0):
+                w_text=0.7, w_pre=0.15, w_elem=0.15, w_post=0.0):
         embed_query = self.embed_text(query)
         
         scores = []
