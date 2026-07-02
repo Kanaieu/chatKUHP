@@ -201,9 +201,17 @@ class PlanningModel:
             "- Tuliskan hasil akhir dalam satu kalimat/frasa query yang padat kata kunci, tanpa penjelasan tambahan atau pengantar.\n"
             "- Jangan hilangkan kata benda spesifik seperti 'kereta api', 'listrik', 'hewan', 'pesawat', 'hoax' karena kata benda ini sangat penting untuk akurasi pencarian.\n"
             "- Jika cerita menyebutkan nomor pasal tertentu (misal: Pasal 374), wajib sertakan nomor pasal tersebut dalam query.\n\n"
+            "PANDUAN KHUSUS (PENTING — jangan salah arah):\n"
+            "- 'Menghasut', 'hasutan', 'provokatif' → tindak pidana PENGHASUTAN di muka umum (Pasal 240), BUKAN pembantuan tindak pidana (Pasal 21).\n"
+            "- 'Melempar batu ke kereta api', 'bahaya rel kereta' → KEALPAAN bahaya lalu lintas kereta api (Pasal 324), BUKAN kekerasan massa di muka umum (Pasal 262).\n"
+            "- 'Menghalangi ibadah', 'mengganggu kegiatan keagamaan' → GANGGUAN ketertiban kegiatan keagamaan dan agama (Pasal 300-an), BUKAN persiapan tindak pidana (Pasal 15/16).\n"
+            "- 'Hoaks', 'berita bohong', 'penyebaran informasi palsu' → PENGHINAAN PEMERINTAH atau penyebaran konten bohong (Pasal 241), BUKAN penyebaran ajaran komunisme atau Pancasila (Pasal 188).\n\n"
             "CONTOH:\n"
-            "- Cerita: 'Ada kasus pencurian listrik oleh tetangga...' -> Query: Pencurian listrik, mengambil aliran listrik secara melawan hukum\n"
-            "- Cerita: 'Apakah aksi pelemparan batu ke kereta api bisa dipidana?' -> Query: Kejahatan penerbangan lalu lintas kereta api, melempar batu ke kereta api\n"
+            "- Cerita: 'Seseorang menghasut warga agar melakukan kekerasan terhadap pejabat...' -> Query: Penghasutan tindak pidana di muka umum, hasutan melawan penguasa umum, Pasal 240\n"
+            "- Cerita: 'Ada kasus pencurian listrik oleh tetangga...' -> Query: Pencurian listrik, mengambil aliran listrik secara melawan hukum, Pasal 476\n"
+            "- Cerita: 'Apakah aksi pelemparan batu ke kereta api bisa dipidana?' -> Query: Kealpaan bahaya lalu lintas kereta api, melempar batu ke jalur rel kereta api, Pasal 324\n"
+            "- Cerita: 'Bagaimana jerat hukum menghalangi kegiatan ibadah?' -> Query: Gangguan ketertiban kegiatan keagamaan, menghalangi ibadah di muka umum, Pasal 274\n"
+            "- Cerita: 'Apakah penyebaran hoaks termasuk tindak pidana?' -> Query: Penyebaran informasi bohong, hoaks penghinaan pemerintah lembaga negara, Pasal 241\n"
             "- Cerita: 'Benarkah pelaku pemalsuan uang bisa dijerat berdasarkan Pasal 374?' -> Query: Pemalsuan mata uang, memalsu uang kertas negara, Pasal 374\n\n"
             f"Cerita Pengguna: {task}\n\n"
             "Query Pencarian:"
@@ -285,6 +293,7 @@ class PlanningModel:
         print(f"[PHASE 1] Memulai retrieve subgoals...", flush=True)
         
         rewritten_task = self._rewrite_query(task)
+        self.last_rewritten_query = rewritten_task
         
         relevant_goals, _ = self.goal_kb.query_goals(rewritten_task, top_k=self.top_k)
         print(f"[PHASE 1] Ditemukan {len(relevant_goals)} kandidat goals.", flush=True)
@@ -452,6 +461,7 @@ class PlanningModel:
             "chosen_goal": goal_name,
             "goal_choices": goal_choices,
             "contexts": selected_hierarchy,
+            "rewritten_query": getattr(self, "last_rewritten_query", ""),
         }
 
 if __name__ == "__main__":
