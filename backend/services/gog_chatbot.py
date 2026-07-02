@@ -200,7 +200,9 @@ class PlanningModel:
             "misalnya: 'merusak, merobek, menginjak-injak, atau membakar bendera negara dengan maksud menodai kehormatannya'.\n"
             "3. Tambahkan nama TINDAK PIDANA formalnya (bukan hanya objek), "
             "misalnya: 'penodaan bendera negara', 'penghasutan', 'pemalsuan surat', 'perkosaan', 'makar'.\n"
-            "4. JANGAN sebut nama orang, lokasi spesifik, atau detail emosional yang tidak relevan secara hukum.\n\n"
+            "4. JANGAN sebut nama orang, lokasi spesifik, atau detail emosional yang tidak relevan secara hukum.\n"
+            "5. DILARANG KERAS menyebutkan nomor pasal, mengutip bunyi pasal, atau mengarang teks hukum. "
+            "Hanya deskripsikan perbuatan dan nama tindak pidananya saja.\n\n"
             f"Cerita Pengguna:\n{task}\n\n"
             "Deskripsi Tindak Pidana Formal:"
         )
