@@ -81,7 +81,7 @@ class PlanningModel:
             try:
                 print(f"[LLM] Memanggil API {self.llm_model} (Attempt {attempt + 1}/{max_retries})...", flush=True)
                 
-                if "command" in self.llm_model.lower(): # Cohere
+                if "command" in self.llm_model.lower():
                     if not self.co_client:
                         raise ValueError("COHERE_API_KEY not found in .env")                        
                     if type(self.co_client).__name__ == "ClientV2":
@@ -121,7 +121,6 @@ class PlanningModel:
                                         res_text = getattr(item, "text", "")
                                         break
                                 if not res_text:
-                                    # Fallback if no text item found
                                     res_text = str(response.message.content[-1])
                             else:
                                 res_text = str(response)
@@ -130,7 +129,7 @@ class PlanningModel:
                             
                         return DummyResponse(res_text)
                         
-                    else: # Cohere V1 fallback
+                    else:
                         kwargs = {
                             "message": prompt,
                             "model": self.llm_model,
@@ -155,8 +154,6 @@ class PlanningModel:
                     
                 else: # Gemini
                     from google.genai import types
-                    
-                    # Disable tools to reduce bias
                     tools = []
                     
                     config_kwargs = {
@@ -190,43 +187,27 @@ class PlanningModel:
                 raise e
 
     def _rewrite_query(self, task: str) -> str:
-        prompt = (
-            "Anda adalah asisten hukum pidana Indonesia. "
-            "Identifikasi tindak pidana utama dari cerita pengguna dan tuliskan dalam format berikut:\n\n"
-            "FORMAT OUTPUT (wajib diikuti):\n"
-            "[Nama Tindak Pidana]: [kata kerja aksi kunci 1], [kata kerja aksi kunci 2], [objek hukum]\n\n"
-            "CONTOH OUTPUT:\n"
-            "- Penghasutan: menghasut, mengajak, mendorong orang melakukan tindak pidana di muka umum\n"
-            "- Penodaan bendera negara: merusak, membakar, menginjak-injak, menodai kehormatan bendera negara\n"
-            "- Pemalsuan uang: memalsu, mencetak, mengedarkan mata uang atau uang kertas negara\n"
-            "- Perjudian: menawarkan, memberi kesempatan main judi, menyelenggarakan perjudian tanpa izin\n"
-            "- Penganiayaan hewan: menyakiti, melukai hewan, hubungan seksual dengan hewan\n\n"
-            "ATURAN:\n"
-            "1. Output HANYA satu baris mengikuti FORMAT di atas. Tanpa kalimat tambahan.\n"
-            "2. DILARANG menyebutkan nomor pasal atau mengutip teks hukum.\n"
-            "3. Gunakan kata kerja yang biasa dipakai dalam pasal KUHP (memalsu, menodai, menghasut, memperdagangkan, dll).\n\n"
-            f"Cerita Pengguna:\n{task}\n\n"
-            "Output:"
-        )
+        import re
+        pasal_matches = re.findall(r'(?i)pasal\s+\d+(?:\s+ayat\s+\d+)?', task)
 
-        # ── PROMPT v2 (TERSIMPAN UNTUK REVERT) ──────────────────────────────
-        # prompt = (
-        #     "Anda adalah pakar hukum pidana Indonesia. Tugas Anda adalah menulis ulang cerita pengguna "
-        #     "menjadi deskripsi tindak pidana yang formal dan spesifik.\n\n"
-        #     "ATURAN:\n"
-        #     "1. Tulis 1-2 kalimat yang mendeskripsikan PERBUATAN yang dilakukan (bukan orangnya), "
-        #     "menggunakan frasa aktif seperti 'perbuatan merusak...', 'tindakan menodai...', 'perbuatan menghasut...'.\n"
-        #     "2. Frasa harus mencerminkan bagaimana bunyi pasal KUHP ditulis, "
-        #     "misalnya: 'merusak, merobek, menginjak-injak, atau membakar bendera negara dengan maksud menodai kehormatannya'.\n"
-        #     "3. Tambahkan nama TINDAK PIDANA formalnya (bukan hanya objek), "
-        #     "misalnya: 'penodaan bendera negara', 'penghasutan', 'pemalsuan surat', 'perkosaan', 'makar'.\n"
-        #     "4. JANGAN sebut nama orang, lokasi spesifik, atau detail emosional yang tidak relevan secara hukum.\n"
-        #     "5. DILARANG KERAS menyebutkan nomor pasal, mengutip bunyi pasal, atau mengarang teks hukum. "
-        #     "Hanya deskripsikan perbuatan dan nama tindak pidananya saja.\n\n"
-        #     f"Cerita Pengguna:\n{task}\n\n"
-        #     "Deskripsi Tindak Pidana Formal:"
-        # )
-        # ────────────────────────────────────────────────────────────────────
+        prompt = (
+            "Tugas Anda adalah menulis ulang cerita/pertanyaan hukum dari pengguna menjadi query pencarian hukum yang optimal untuk mencocokkan pasal KUHP Baru (UU 1/2023).\n\n"
+            "Query pencarian harus terdiri dari kombinasi:\n"
+            "1. Nama tindak pidana formal yang relevan (misal: Pencurian, Pemalsuan, Makar, dll).\n"
+            "2. Kata kunci aksi/perbuatan konkret dari cerita pengguna (misal: melempar batu, mencuri listrik, membagi hoax).\n"
+            "3. Objek hukum spesifik yang terlibat (misal: kereta api, hewan, bendera, pesawat, anak).\n"
+            "4. Nomor pasal/undang-undang jika secara eksplisit disebutkan oleh pengguna.\n\n"
+            "ATURAN:\n"
+            "- Tuliskan hasil akhir dalam satu kalimat/frasa query yang padat kata kunci, tanpa penjelasan tambahan atau pengantar.\n"
+            "- Jangan hilangkan kata benda spesifik seperti 'kereta api', 'listrik', 'hewan', 'pesawat', 'hoax' karena kata benda ini sangat penting untuk akurasi pencarian.\n"
+            "- Jika cerita menyebutkan nomor pasal tertentu (misal: Pasal 374), wajib sertakan nomor pasal tersebut dalam query.\n\n"
+            "CONTOH:\n"
+            "- Cerita: 'Ada kasus pencurian listrik oleh tetangga...' -> Query: Pencurian listrik, mengambil aliran listrik secara melawan hukum\n"
+            "- Cerita: 'Apakah aksi pelemparan batu ke kereta api bisa dipidana?' -> Query: Kejahatan penerbangan lalu lintas kereta api, melempar batu ke kereta api\n"
+            "- Cerita: 'Benarkah pelaku pemalsuan uang bisa dijerat berdasarkan Pasal 374?' -> Query: Pemalsuan mata uang, memalsu uang kertas negara, Pasal 374\n\n"
+            f"Cerita Pengguna: {task}\n\n"
+            "Query Pencarian:"
+        )
         try:
             print(f"[LLM] Melakukan Query Rewriting...", flush=True)
             response = self._call_llm_with_retry(
@@ -234,11 +215,24 @@ class PlanningModel:
                 temperature=0.0
             )
             rewritten_task = response.text.strip()
+            
+            rewritten_task = re.sub(r'^(?i)(?:query\s*pencarian|query)\s*:\s*', '', rewritten_task)
+            rewritten_task = rewritten_task.strip('"-* ')
+
+            for pm in pasal_matches:
+                clean_pm = pm.strip()
+                if clean_pm.lower() not in rewritten_task.lower():
+                    rewritten_task += f", {clean_pm}"
+
             print(f"[LLM] Hasil Query Rewriting: {rewritten_task}", flush=True)
             return rewritten_task
         except Exception as e:
             print(f"[LLM ERROR] Gagal melakukan query rewriting: {e}", flush=True)
-            return task
+            fallback_task = task
+            for pm in pasal_matches:
+                if pm.lower() not in fallback_task.lower():
+                    fallback_task += f", {pm}"
+            return fallback_task
 
     def generate(self, task: str, goal_name: str, relevant_goals: list) -> dict:
         """
@@ -277,8 +271,6 @@ class PlanningModel:
                     if pc and pc != "None":
                         used_preconditions.add(pc)
 
-            # Recursive step (simplified for example)
-            # In real implementation this would navigate graph relationships
             
         dfs(goal_name, dfs_tree)
         return {"tree": dfs_tree, "used_preconditions": list(used_preconditions)}
@@ -292,7 +284,6 @@ class PlanningModel:
         """
         print(f"[PHASE 1] Memulai retrieve subgoals...", flush=True)
         
-        # LLM Query Rewriting to remove Semantic Noise
         rewritten_task = self._rewrite_query(task)
         
         relevant_goals, _ = self.goal_kb.query_goals(rewritten_task, top_k=self.top_k)
@@ -315,7 +306,6 @@ class PlanningModel:
 
         while True:
             try:
-                # Menggunakan helper retry
                 print(f"[PHASE 1] Melakukan inferensi goal yang paling cocok...", flush=True)
                 response = self._call_llm_with_retry(
                     prompt=prompt_text,
@@ -361,9 +351,6 @@ class PlanningModel:
         all_subgoals_trees = self.goal_kb.dfs(goal_name)
         print(f"[PHASE 2] DFS menghasilkan {len(all_subgoals_trees)} alternative reasoning paths.", flush=True)
         
-        # Gunakan reduce_goals() untuk memilih tree terbaik berdasarkan:
-        # 1. Kelengkapan unsur hukum (preconditions + elements)
-        # 2. Relevansi semantik dengan query user
         query_emb = self.goal_kb.embed_text(task)
         selected_hierarchy, all_legal_elements, tree_score = self.goal_kb.reduce_goals(
             all_subgoals_trees,
@@ -384,7 +371,6 @@ class PlanningModel:
                     if pc and pc != "None":
                         used_preconditions.add(pc)
             
-            # Mari kita cek juga postconditions dan elements-nya
             postconds = node_data.get("postconditions", {})
             print(f"[DEBUG DFS] Node '{node_name}' Postconditions: {postconds}", flush=True)
             elements = node_data.get("elements", {})
@@ -414,7 +400,6 @@ class PlanningModel:
         # 3. Query the LLM for the final Answer
         print(f"[PHASE 2] Menyusun final generation response...", flush=True)
         try:
-            # Menggunakan helper retry
             response = self._call_llm_with_retry(
                 prompt=user_content,
                 system_instruction=system_prompt,
