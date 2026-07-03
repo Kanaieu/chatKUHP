@@ -190,6 +190,7 @@ class PlanningModel:
         import re
         pasal_matches = re.findall(r'(?i)pasal\s+\d+(?:\s+ayat\s+\d+)?', task)
 
+        #HAPUS
         prompt = (
             "Tugas Anda adalah menulis ulang cerita/pertanyaan hukum dari pengguna menjadi query pencarian hukum yang optimal untuk mencocokkan pasal KUHP Baru (UU 1/2023).\n\n"
             "Query pencarian harus terdiri dari kombinasi:\n"
@@ -202,16 +203,19 @@ class PlanningModel:
             "- Jangan hilangkan kata benda spesifik seperti 'kereta api', 'listrik', 'hewan', 'pesawat', 'hoax' karena kata benda ini sangat penting untuk akurasi pencarian.\n"
             "- Jika cerita menyebutkan nomor pasal tertentu (misal: Pasal 374), wajib sertakan nomor pasal tersebut dalam query.\n\n"
             "PANDUAN KHUSUS (PENTING — jangan salah arah):\n"
-            "- 'Menghasut', 'hasutan', 'provokatif' → tindak pidana PENGHASUTAN di muka umum (Pasal 240), BUKAN pembantuan tindak pidana (Pasal 21).\n"
+            "- 'Menghasut', 'hasutan', 'provokatif', 'mengajak melakukan kejahatan' → tindak pidana PENGHASUTAN (Pasal 246), BUKAN penghinaan pemerintah (Pasal 240 atau 241).\n"
             "- 'Melempar batu ke kereta api', 'bahaya rel kereta' → KEALPAAN bahaya lalu lintas kereta api (Pasal 324), BUKAN kekerasan massa di muka umum (Pasal 262).\n"
-            "- 'Menghalangi ibadah', 'mengganggu kegiatan keagamaan' → GANGGUAN ketertiban kegiatan keagamaan dan agama (Pasal 300-an), BUKAN persiapan tindak pidana (Pasal 15/16).\n"
-            "- 'Hoaks', 'berita bohong', 'penyebaran informasi palsu' → PENGHINAAN PEMERINTAH atau penyebaran konten bohong (Pasal 241), BUKAN penyebaran ajaran komunisme atau Pancasila (Pasal 188).\n\n"
+            "- 'Menghalangi ibadah', 'mengganggu kegiatan keagamaan' → GANGGUAN ketertiban kegiatan keagamaan (Pasal 274).\n"
+            "- 'Hoaks', 'berita bohong', 'penyebaran informasi palsu' → PENGHINAAN PEMERINTAH di muka umum (Pasal 240), BUKAN penyebaran ajaran komunisme atau Pancasila (Pasal 188).\n"
+            "- 'Penipuan emas', 'berat emas tidak sesuai', 'pedagang emas menipu' → PENIPUAN jual beli barang (Pasal 492 atau Pasal 493), BUKAN pemalsuan cap atau logo emas (Pasal 384).\n"
+            "- 'Pencurian listrik', 'mencuri aliran listrik', 'mengambil listrik tanpa izin' → PENCURIAN (Pasal 476), BUKAN kealpaan bangunan listrik rusak (Pasal 320).\n\n"
             "CONTOH:\n"
-            "- Cerita: 'Seseorang menghasut warga agar melakukan kekerasan terhadap pejabat...' -> Query: Penghasutan tindak pidana di muka umum, hasutan melawan penguasa umum, Pasal 240\n"
+            "- Cerita: 'Seseorang menghasut warga agar melakukan kekerasan terhadap pejabat...' -> Query: Penghasutan tindak pidana di muka umum, hasutan melawan penguasa, Pasal 246\n"
+            "- Cerita: 'Apakah penyebaran hoaks termasuk tindak pidana?' -> Query: Penghinaan pemerintah lembaga negara di muka umum, konten hoaks menghina institusi negara, Pasal 240\n"
             "- Cerita: 'Ada kasus pencurian listrik oleh tetangga...' -> Query: Pencurian listrik, mengambil aliran listrik secara melawan hukum, Pasal 476\n"
+            "- Cerita: 'Saya membeli emas tapi beratnya tidak sesuai...' -> Query: Penipuan jual beli barang tidak sesuai spesifikasi, tipu muslihat pedagang, Pasal 492\n"
             "- Cerita: 'Apakah aksi pelemparan batu ke kereta api bisa dipidana?' -> Query: Kealpaan bahaya lalu lintas kereta api, melempar batu ke jalur rel kereta api, Pasal 324\n"
             "- Cerita: 'Bagaimana jerat hukum menghalangi kegiatan ibadah?' -> Query: Gangguan ketertiban kegiatan keagamaan, menghalangi ibadah di muka umum, Pasal 274\n"
-            "- Cerita: 'Apakah penyebaran hoaks termasuk tindak pidana?' -> Query: Penyebaran informasi bohong, hoaks penghinaan pemerintah lembaga negara, Pasal 241\n"
             "- Cerita: 'Benarkah pelaku pemalsuan uang bisa dijerat berdasarkan Pasal 374?' -> Query: Pemalsuan mata uang, memalsu uang kertas negara, Pasal 374\n\n"
             f"Cerita Pengguna: {task}\n\n"
             "Query Pencarian:"
@@ -457,10 +461,22 @@ class PlanningModel:
         )
         print(f"[GETCONTEXT] Tree terpilih (score={tree_score:.4f}), unsur: {all_legal_elements}", flush=True)
 
+        # HAPUS
+        # Filter pasal-pasal "boilerplate" yang selalu muncul tapi tidak relevan secara kontekstual.
+        # Pasal 79 (tabel denda) muncul di hampir semua jawaban dan selalu dinilai irrelevant oleh evaluator.
+        CONTEXT_BLACKLIST_PREFIXES = (
+            "KUHP Pasal 79",   # Tabel kategori denda — tidak kontekstual
+        )
+        filtered_hierarchy = {
+            name: data
+            for name, data in selected_hierarchy.items()
+            if not name.startswith(CONTEXT_BLACKLIST_PREFIXES)
+        }
+
         return {
             "chosen_goal": goal_name,
             "goal_choices": goal_choices,
-            "contexts": selected_hierarchy,
+            "contexts": filtered_hierarchy,
             "rewritten_query": getattr(self, "last_rewritten_query", ""),
         }
 
