@@ -217,6 +217,7 @@ class PlanningModel:
             "- Cerita: 'Apakah aksi pelemparan batu ke kereta api bisa dipidana?' -> Query: Kealpaan bahaya lalu lintas kereta api, melempar batu ke jalur rel kereta api, Pasal 324\n"
             "- Cerita: 'Bagaimana jerat hukum menghalangi kegiatan ibadah?' -> Query: Gangguan ketertiban kegiatan keagamaan, menghalangi ibadah di muka umum, Pasal 274\n"
             "- Cerita: 'Benarkah pelaku pemalsuan uang bisa dijerat berdasarkan Pasal 374?' -> Query: Pemalsuan mata uang, memalsu uang kertas negara, Pasal 374\n\n"
+            "- Cerita: 'Apa jerat hukumnya bagi orang yang mendorong orang lain untuk bunuh diri' -> Query: Pasal 462, mendorong bunuh diri, membantu bunuh diri, memberi sarana bunuh diri, membantu_atau_mendorong_bunuh_diri_sampai_mati\n\n"
             f"Cerita Pengguna: {task}\n\n"
             "Query Pencarian:"
         )
