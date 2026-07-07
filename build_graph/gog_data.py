@@ -806,24 +806,64 @@ class GOGKB:
             # Cosine similarity per komponen
             sim_text = cosine_similarity([node.name_emb], [embed_query])[0][0]
             
+            # Check which components are active (have non-empty data in preconditions/elements/postconditions)
+            pre_active = False
+            if node.preconditions:
+                for p in node.preconditions:
+                    if p and p != "None" and isinstance(p, dict) and len(p) > 0:
+                        pre_active = True
+                        break
+
+            elem_active = False
+            if node.elements:
+                for e in node.elements:
+                    if e and e != "None" and isinstance(e, dict) and len(e) > 0:
+                        elem_active = True
+                        break
+
+            post_active = False
+            if node.postconditions:
+                for p in node.postconditions:
+                    if p and p != "None" and isinstance(p, dict) and len(p) > 0:
+                        post_active = True
+                        break
+
             # Preconditions: ambil max dari semua alternatif
             sim_pre = max(
                 cosine_similarity([emb], [embed_query])[0][0]
                 for emb in node.preconditions_emb
-            ) if node.preconditions_emb and any(e for e in node.preconditions_emb) else 0.0
+            ) if pre_active and node.preconditions_emb and any(e is not None for e in node.preconditions_emb) else 0.0
             
             sim_elem = max(
                 cosine_similarity([emb], [embed_query])[0][0]
                 for emb in node.elements_emb
-            ) if node.elements_emb and any(e for e in node.elements_emb) else 0.0
+            ) if elem_active and node.elements_emb and any(e is not None for e in node.elements_emb) else 0.0
             
             sim_post = max(
                 cosine_similarity([emb], [embed_query])[0][0]
                 for emb in node.postconditions_emb
-            ) if node.postconditions_emb and any(e for e in node.postconditions_emb) else 0.0
+            ) if post_active and node.postconditions_emb and any(e is not None for e in node.postconditions_emb) else 0.0
             
-            # Weighted composite score
-            total = w_text*sim_text + w_pre*sim_pre + w_elem*sim_elem + w_post*sim_post
+            # Calculate sum of weights for active components
+            w_sum = w_text
+            if pre_active:
+                w_sum += w_pre
+            if elem_active:
+                w_sum += w_elem
+            if post_active:
+                w_sum += w_post
+
+            # Calculate weighted score sum
+            score_sum = w_text * sim_text
+            if pre_active:
+                score_sum += w_pre * sim_pre
+            if elem_active:
+                score_sum += w_elem * sim_elem
+            if post_active:
+                score_sum += w_post * sim_post
+
+            # Normalize composite score to avoid zero precondition/element penalty
+            total = score_sum / w_sum if w_sum > 0 else 0.0
             scores.append(total)
         
         sim_idxs = [i for i in np.argpartition(scores, -top_k)[-top_k:]]
