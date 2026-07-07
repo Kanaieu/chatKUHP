@@ -232,7 +232,7 @@ class PlanningModel:
             )
             rewritten_task = response.text.strip()
             
-            rewritten_task = re.sub(r'^(?i)(?:query\s*pencarian|query)\s*:\s*', '', rewritten_task)
+            rewritten_task = re.sub(r'(?i)^(?:query\s*pencarian|query)\s*:\s*', '', rewritten_task)
             rewritten_task = rewritten_task.strip('"-* ')
 
             for pm in pasal_matches:
@@ -347,6 +347,29 @@ class PlanningModel:
                 print(f"[PHASE 1 ERROR] Gagal memparsing JSON hasil inferensi: {e}", flush=True)
                 continue
 
+    def _add_sibling_nodes(self, hierarchy_dict: dict) -> dict:
+        """
+        Mencari dan menambahkan pasal-pasal saudara (ayat lain dari pasal yang sama)
+        ke dalam hierarchy_dict untuk memberikan konteks hukum lengkap.
+        """
+        import re
+        new_hierarchy = dict(hierarchy_dict)
+        for name in list(hierarchy_dict.keys()):
+            match = re.match(r'^(KUHP Pasal \d+)', name)
+            if match:
+                base_pasal = match.group(1)
+                for node in self.goal_kb.nodes:
+                    if node.name.startswith(base_pasal) and node.name not in new_hierarchy:
+                        new_hierarchy[node.name] = {
+                            "description": node.desc,
+                            "aliases": node.aliases,
+                            "preconditions": node.preconditions[0] if node.preconditions else {},
+                            "elements": node.elements[0] if node.elements else {},
+                            "postconditions": node.postconditions[0] if node.postconditions else {},
+                            "subgoals": []
+                        }
+        return new_hierarchy
+
     def planning(
         self,
         task: str,
@@ -376,6 +399,8 @@ class PlanningModel:
             w_element=0.5
         )
         print(f"[PHASE 2] Tree terpilih (score={tree_score:.4f}), unsur hukum ditemukan: {all_legal_elements}", flush=True)
+
+        selected_hierarchy = self._add_sibling_nodes(selected_hierarchy)
 
         # Extract all used postconditions
         used_preconditions = set()
@@ -464,6 +489,8 @@ class PlanningModel:
             w_element=0.5
         )
         print(f"[GETCONTEXT] Tree terpilih (score={tree_score:.4f}), unsur: {all_legal_elements}", flush=True)
+
+        selected_hierarchy = self._add_sibling_nodes(selected_hierarchy)
 
         # HAPUS
         # Filter pasal-pasal "boilerplate" yang selalu muncul tapi tidak relevan secara kontekstual.
