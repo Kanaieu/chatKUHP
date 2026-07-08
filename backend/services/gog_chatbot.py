@@ -221,6 +221,7 @@ class PlanningModel:
             "- Cerita: 'Apa pidana bagi orang yang menghina Pancasila? Apa bisa dikatakan menghina lambang Negara?' -> Query: Menghina Pancasila, mengganti Pancasila dasar negara, penodaan lambang negara, Pasal 190, Pasal 236\n"
             "- Cerita: 'Benarkah pelaku pemalsuan uang bisa dijerat berdasarkan Pasal 374?' -> Query: Pemalsuan mata uang, memalsu uang kertas negara, Pasal 374\n"
             "- Cerita: 'Apa jerat hukumnya bagi orang yang mendorong orang lain untuk bunuh diri' -> Query: Pasal 462, mendorong bunuh diri, membantu bunuh diri, memberi sarana bunuh diri, membantu_atau_mendorong_bunuh_diri_sampai_mati\n"
+            "- Cerita: 'Apakah pengaduan kohabitasi bisa dicabut, kapan batas waktunya?' -> Query: Hidup bersama luar kawin, kohabitasi, penarikan pengaduan perzinaan, batas waktu penarikan kembali pengaduan, Pasal 412\n"
             "- Cerita: 'Larangan Perdagangan Organ, Jaringan Tubuh, dan Darah Manusia' -> Query: Perdagangan organ tubuh manusia, jaringan tubuh, darah manusia, Pasal 345\n"
             "- Cerita: 'Hukuman Maksimal bagi Pelaku Judi Bola Online' -> Query: Perjudian, menawarkan atau memberi kesempatan main judi tanpa izin, judi bola online, Pasal 426\n"
             "- Cerita: 'Saya penasaran, kalau menuduh orang mencuri tanpa bukti kena pasal berapa? Apakah bisa ia dikenakan pasal menuduh orang tanpa bukti?' -> Query: Pencemaran nama baik, fitnah tanpa bukti, menuduh mencuri tanpa bukti, Pasal 433, Pasal 434\n"
