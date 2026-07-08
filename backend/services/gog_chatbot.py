@@ -207,7 +207,7 @@ class PlanningModel:
             "- 'Melempar batu ke kereta api', 'bahaya rel kereta' → KEALPAAN bahaya lalu lintas kereta api (Pasal 324), BUKAN kekerasan massa di muka umum (Pasal 262).\n"
             "- 'Menghalangi ibadah', 'mengganggu kegiatan keagamaan', 'membubarkan ibadah' → GANGGUAN ketertiban kegiatan keagamaan, merintangi ibadah dengan kekerasan (Pasal 303).\n"
             "- 'Hoaks', 'berita bohong', 'penyebaran informasi palsu' → PENGHINAAN PEMERINTAH di muka umum (Pasal 240), BUKAN penyebaran ajaran komunisme atau Pancasila (Pasal 188).\n"
-            "- 'Menghina Pancasila', 'menolak Pancasila', 'mengganti Pancasila' → TINDAKAN MENOLAK/MENGGANTI PANCASILA (Pasal 188 atau Pasal 190), BUKAN unjuk rasa tanpa izin (Pasal 256).\n"
+            "- 'Menghina Pancasila', 'menolak Pancasila', 'mengganti Pancasila' → TINDAKAN MENOLAK/MENGGANTI PANCASILA (Pasal 190), BUKAN unjuk rasa tanpa izin (Pasal 256).\n"
             "- 'Menghina lambang negara', 'merusak lambang negara' → PENODAAN LAMBANG NEGARA (Pasal 236), BUKAN penghinaan pemerintah secara umum (Pasal 240).\n"
             "- 'Penipuan emas', 'berat emas tidak sesuai', 'pedagang emas menipu' → PENIPUAN jual beli barang (Pasal 492 atau Pasal 493), BUKAN pemalsuan cap atau logo emas (Pasal 384).\n"
             "- 'Pencurian listrik', 'mencuri aliran listrik', 'mengambil listrik tanpa izin' → PENCURIAN (Pasal 476), BUKAN kealpaan bangunan listrik rusak (Pasal 320).\n\n"
@@ -215,17 +215,20 @@ class PlanningModel:
             "- Cerita: 'Seseorang menghasut warga agar melakukan kekerasan terhadap pejabat...' -> Query: Penghasutan tindak pidana di muka umum, hasutan melawan penguasa, Pasal 246\n"
             "- Cerita: 'Apakah penyebaran hoaks termasuk tindak pidana?' -> Query: Penghinaan pemerintah lembaga negara di muka umum, konten hoaks menghina institusi negara, Pasal 240\n"
             "- Cerita: 'Ada kasus pencurian listrik oleh tetangga...' -> Query: Pencurian listrik, mengambil aliran listrik secara melawan hukum, Pasal 476\n"
-            "- Cerita: 'Saya membeli emas tapi beratnya tidak sesuai...' -> Query: Penipuan jual beli barang tidak sesuai spesifikasi, tipu muslihat pedagang, Pasal 492\n"
-            "- Cerita: 'Apakah aksi pelemparan batu ke kereta api bisa dipidana?' -> Query: Kealpaan bahaya lalu lintas kereta api, melempar batu ke jalur rel kereta api, Pasal 324\n"
+            "- Cerita: 'Saya membeli emas tapi beratnya tidak sesuai...' -> Query: Penipuan jual beli barang tidak sesuai spesifikasi oleh penjual, tipu muslihat pedagang mengurangi takaran emas, Pasal 493\n"
+            "- Cerita: 'Apakah aksi pelemparan batu ke kereta api bisa dipidana?' -> Query: Sengaja menimbulkan bahaya lalu lintas kereta api, melempar batu ke jalur rel kereta api, Pasal 323\n"
             "- Cerita: 'Bagaimana jerat hukum menghalangi kegiatan ibadah?' -> Query: Gangguan ketertiban kegiatan keagamaan, merintangi atau membubarkan ibadah, Pasal 303\n"
             "- Cerita: 'Apa pidana bagi orang yang menghina Pancasila? Apa bisa dikatakan menghina lambang Negara?' -> Query: Menghina Pancasila, mengganti Pancasila dasar negara, penodaan lambang negara, Pasal 190, Pasal 236\n"
             "- Cerita: 'Benarkah pelaku pemalsuan uang bisa dijerat berdasarkan Pasal 374?' -> Query: Pemalsuan mata uang, memalsu uang kertas negara, Pasal 374\n"
             "- Cerita: 'Apa jerat hukumnya bagi orang yang mendorong orang lain untuk bunuh diri' -> Query: Pasal 462, mendorong bunuh diri, membantu bunuh diri, memberi sarana bunuh diri, membantu_atau_mendorong_bunuh_diri_sampai_mati\n"
+            "- Cerita: 'Apakah sanksi hukum bagi warga negara Indonesia yang membentuk perkumpulan bukan badan hukum dengan tujuan untuk merdeka...' -> Query: Makar memisahkan NKRI, gerakan separatis membentuk perkumpulan tidak mengakui kedaulatan NKRI, Pasal 192\n"
+            "- Cerita: 'Dalam UU 1/2023 tentang KUHP baru, tindak pidana penodaan terhadap Bendera Negara dan Lambang Negara diatur dalam pasal berapa?' -> Query: Penodaan Bendera Negara, merusak lambang negara, menghina lambang negara, Pasal 235, Pasal 236\n"
+            "- Cerita: 'Suatu ketika, saya memergoki istri saya sedang berselingkuh hingga melakukan hubungan badan. Apakah saya bisa mempidanakan mereka?' -> Query: Perzinaan, bersetubuh dengan orang lain bukan suami istri, perselingkuhan hubungan badan, Pasal 411\n"
             "- Cerita: 'Apakah pengaduan kohabitasi bisa dicabut, kapan batas waktunya?' -> Query: Hidup bersama luar kawin, kohabitasi, penarikan pengaduan perzinaan, batas waktu penarikan kembali pengaduan, Pasal 412\n"
             "- Cerita: 'Larangan Perdagangan Organ, Jaringan Tubuh, dan Darah Manusia' -> Query: Perdagangan organ tubuh manusia, jaringan tubuh, darah manusia, Pasal 345\n"
             "- Cerita: 'Hukuman Maksimal bagi Pelaku Judi Bola Online' -> Query: Perjudian, menawarkan atau memberi kesempatan main judi tanpa izin, judi bola online, Pasal 426\n"
             "- Cerita: 'Saya penasaran, kalau menuduh orang mencuri tanpa bukti kena pasal berapa? Apakah bisa ia dikenakan pasal menuduh orang tanpa bukti?' -> Query: Pencemaran nama baik, fitnah tanpa bukti, menuduh mencuri tanpa bukti, Pasal 433, Pasal 434\n"
-            "- Cerita: 'Penumpang yang secara lisan bercanda bawa bom tersebut diturunkan dari pesawat. Pertanyaan saya, kenapa tidak boleh bercanda bawa bom di pesawat? Apakah perbuatan tersebut masuk tindakan teror?' -> Query: Tindak Pidana Terorisme, bercanda bawa bom di pesawat, mengancam keselamatan penerbangan, Pasal 583, Pasal 601\n\n"
+            "- Cerita: 'Penumpang yang secara lisan bercanda bawa bom tersebut diturunkan dari pesawat. Pertanyaan saya, kenapa tidak boleh bercanda bawa bom di pesawat? Apakah perbuatan tersebut masuk tindakan teror?' -> Query: Tindak Pidana Terorisme, bercanda bawa bom di pesawat, mengancam keselamatan penerbangan, Pasal 577, Pasal 583, Pasal 601\n\n"
             f"Cerita Pengguna: {task}\n\n"
             "Query Pencarian:"
         )
@@ -325,6 +328,16 @@ class PlanningModel:
 
         prompt_text = PROMPTS["goal_inference"].format(context=context_info, task=task)
         valid_names = [g.name for g in relevant_goals]
+
+        # Prioritas pemilihan pasal deterministik jika pasal terdeteksi di query pencarian
+        import re
+        pasal_match = re.search(r'(?i)pasal\s*(\d+)', rewritten_task)
+        if pasal_match:
+            target_pasal = f"Pasal {pasal_match.group(1)}"
+            for goal in relevant_goals:
+                if target_pasal in goal.name:
+                    print(f"[PHASE 1] Memilih goal secara langsung berdasarkan deteksi pasal '{goal.name}'", flush=True)
+                    return goal.name, valid_names
 
         while True:
             try:
@@ -502,6 +515,7 @@ class PlanningModel:
         # Pasal 79 (tabel denda) muncul di hampir semua jawaban dan selalu dinilai irrelevant oleh evaluator.
         CONTEXT_BLACKLIST_PREFIXES = (
             "KUHP Pasal 79",   # Tabel kategori denda — tidak kontekstual
+            "KUHP Pasal 412 Ayat 4", # Duplikasi node keliru di KB
         )
         filtered_hierarchy = {
             name: data
