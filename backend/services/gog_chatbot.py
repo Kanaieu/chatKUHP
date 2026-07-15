@@ -186,6 +186,77 @@ class PlanningModel:
                 print(f"[LLM ERROR] Gagal memanggil API: {e}", flush=True)
                 raise e
 
+    def _contextualize_query(self, task: str, history: List[dict]) -> str:
+        if not history:
+            return task
+        
+        history_str = ""
+        for msg in history:
+            role = "User" if msg.get("role") == "user" else "Asisten"
+            text = msg.get("content", "")
+            history_str += f"{role}: {text}\n"
+            
+        prompt = (
+            "Anda adalah asisten AI yang membantu memformulasikan ulang pertanyaan pengguna. "
+            "Diberikan riwayat percakapan berikut dan pertanyaan terbaru dari pengguna, "
+            "tulis ulang pertanyaan tersebut agar menjadi pertanyaan mandiri (self-contained) "
+            "yang lengkap dan dapat dipahami tanpa perlu membaca riwayat percakapan sebelumnya.\n\n"
+            "ATURAN:\n"
+            "1. JANGAN menjawab pertanyaan tersebut. Hanya tulis ulang pertanyaannya saja.\n"
+            "2. Pertahankan semua detail hukum penting (seperti pasal, nama perbuatan, pelaku, korban, dll) jika ada.\n"
+            "3. Jika pertanyaan terbaru sudah lengkap dan mandiri, kembalikan pertanyaan tersebut persis seperti aslinya.\n"
+            "4. Berikan hasil akhir saja tanpa ada kalimat pengantar.\n\n"
+            f"Riwayat Percakapan:\n{history_str}\n"
+            f"Pertanyaan Terbaru: {task}\n\n"
+            "Pertanyaan Mandiri:"
+        )
+        try:
+            print(f"[LLM] Melakukan Contextualizing Query...", flush=True)
+            response = self._call_llm_with_retry(
+                prompt=prompt,
+                temperature=0.0
+            )
+            contextualized = response.text.strip()
+            print(f"[LLM] Hasil Contextualized Query: {contextualized}", flush=True)
+            return contextualized
+        except Exception as e:
+            print(f"[LLM ERROR] Gagal melakukan contextualizing query: {e}", flush=True)
+            return task
+
+    def _classify_query(self, query: str) -> str:
+        prompt = (
+            "Tugas Anda adalah mengklasifikasikan pertanyaan atau pesan pengguna ke dalam salah satu dari 3 kategori berikut:\n"
+            "1. 'legal': Jika pesan berisi pertanyaan, kasus, kronologi kejadian hukum, pasal, aturan hukum, hak hukum, atau konsultasi hukum pidana/KUHP.\n"
+            "2. 'greeting': Jika pesan berupa sapaan, salam, perkenalan diri, ucapan terima kasih, atau penutup (misal: 'Halo', 'Hai', 'Selamat pagi', 'Terima kasih', 'Bye', 'Sampai jumpa').\n"
+            "3. 'other': Jika pesan di luar hukum dan di luar sapaan, seperti pertanyaan umum tentang resep masakan, coding/pemrograman, matematika, sains, fakta umum (misal: 'siapa penemu lampu', 'bagaimana cara membuat website', 'ibu kota Perancis adalah').\n\n"
+            "Format respons harus berupa JSON seperti berikut:\n"
+            "{\n"
+            "  \"category\": \"legal\" / \"greeting\" / \"other\",\n"
+            "  \"reason\": \"alasan singkat\"\n"
+            "}\n\n"
+            f"Pesan Pengguna: {query}\n\n"
+            "Output (JSON):"
+        )
+        try:
+            print(f"[LLM] Mengklasifikasikan query...", flush=True)
+            response = self._call_llm_with_retry(
+                prompt=prompt,
+                temperature=0.0,
+                is_json=True
+            )
+            resp_text = response.text.strip()
+            if resp_text.startswith("```json"):
+                resp_text = resp_text[7:-3].strip()
+            data = json.loads(resp_text)
+            category = data.get("category", "legal")
+            print(f"[LLM] Kategori query: {category}. Alasan: {data.get('reason')}", flush=True)
+            if category not in ["legal", "greeting", "other"]:
+                return "legal"
+            return category
+        except Exception as e:
+            print(f"[LLM ERROR] Gagal mengklasifikasikan query: {e}. Default ke 'legal'.", flush=True)
+            return "legal"
+
     def _rewrite_query(self, task: str) -> str:
         import re
         pasal_matches = re.findall(r'(?i)pasal\s+\d+(?:\s+ayat\s+\d+)?', task)
@@ -396,21 +467,45 @@ class PlanningModel:
         example: str | None = None,
         visual_info: str | None = None,
         goal_name: str | None = None,
+        history: List[dict] = None
     ):
         """
         Phase 2: Question Answering based on the DFS Legal Context.
         """
         print(f"\n[PHASE 2] Memulai planning & penyusunan jawaban...", flush=True)
+
+        # 1. Contextualize query if history is present
+        contextualized_task = task
+        if history:
+            contextualized_task = self._contextualize_query(task, history)
+
+        # 2. Classify the contextualized query (greeting, other/out-of-law, legal)
+        category = self._classify_query(contextualized_task)
+        if category == "greeting":
+            return {
+                "answer": "Halo! Saya adalah asisten kecerdasan buatan khusus Hukum Pidana Indonesia. Ada yang bisa saya bantu terkait konsultasi atau pertanyaan hukum Anda?",
+                "chosen_goal": None,
+                "goal_choices": [],
+                "used_preconditions": []
+            }
+        elif category == "other":
+            return {
+                "answer": "Maaf, saya hanya dapat membantu menjawab pertanyaan atau menganalisis kasus yang berkaitan dengan hukum (khususnya Hukum Pidana Indonesia/KUHP). Silakan ajukan pertanyaan yang relevan.",
+                "chosen_goal": None,
+                "goal_choices": [],
+                "used_preconditions": []
+            }
+
         goal_choices = []
         if not goal_name:
-            goal_name, goal_choices = self.retrieve(task)
+            goal_name, goal_choices = self.retrieve(contextualized_task)
 
         # 1. Expand the selected Pasal using the DFS backward chaining
         print(f"[PHASE 2] Melakukan evaluasi DFS untuk goal '{goal_name}'...", flush=True)
         all_subgoals_trees = self.goal_kb.dfs(goal_name)
         print(f"[PHASE 2] DFS menghasilkan {len(all_subgoals_trees)} alternative reasoning paths.", flush=True)
         
-        query_emb = self.goal_kb.embed_text(task)
+        query_emb = self.goal_kb.embed_text(contextualized_task)
         selected_hierarchy, all_legal_elements, tree_score = self.goal_kb.reduce_goals(
             all_subgoals_trees,
             query_embedding=query_emb,
@@ -451,11 +546,20 @@ class PlanningModel:
             "3. **Ringkasan Fakta & Analisis Unsur**: (Buat ringkasan fakta kasus dan bedah satu per satu unsur pasalnya, apakah terpenuhi atau tidak)\n"
         )
 
+        history_text = ""
+        if history:
+            history_text = "RIWAYAT PERCAKAPAN SEBELUMNYA:\n"
+            for msg in history:
+                role = "User" if msg.get("role") == "user" else "Asisten"
+                history_text += f"{role}: {msg.get('content')}\n"
+            history_text += "\n"
+
         user_content = (
-            f"USER CASE / QUESTION:\n{task}\n\n"
+            f"{history_text}"
+            f"PERTANYAAN SEKARANG:\n{task}\n\n"
             f"TARGET PASAL:\n{goal_name}\n\n"
             f"LEGAL CONTEXT (DFS TREE):\n{json.dumps(selected_hierarchy, indent=4)}\n\n"
-            f"Please provide your legal analysis:"
+            f"Harap berikan analisis hukum Anda (lanjutkan percakapan dengan natural berdasarkan riwayat jika ada):"
         )
 
         # 3. Query the LLM for the final Answer

@@ -75,7 +75,13 @@ function Index() {
       const data = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text }),
+        body: JSON.stringify({
+          query: text,
+          history: messages.map((m) => ({
+            sender: m.role,
+            text: m.content,
+          })),
+        }),
       }).then(async (res) => {
         if (!res.ok) throw new Error("Gagal mendapatkan respons dari server");
         return await res.json();

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from services.gog_chatbot import PlanningModel
 import traceback
 
@@ -13,9 +13,14 @@ except Exception:
 
 router = APIRouter()
 
+class MessageItem(BaseModel):
+    sender: str
+    text: str
+
 class UserQuery(BaseModel):
     query: Optional[str] = None
     message: Optional[str] = None
+    history: Optional[List[MessageItem]] = None
 
     if _PV2:
         @classmethod
@@ -44,8 +49,16 @@ async def chat_endpoint(user_query: UserQuery):
         print(f"[API] Inisialisasi chatbot...", flush=True)
         chatbot = PlanningModel()
 
+        # Convert history format if present
+        history_list = []
+        if user_query.history:
+            for item in user_query.history:
+                # Normalizing role to 'user' or 'assistant'
+                role = "user" if item.sender == "user" else "assistant"
+                history_list.append({"role": role, "content": item.text})
+
         print(f"[API] Menjalankan proses planning...", flush=True)
-        response = chatbot.planning(task=user_query.query)
+        response = chatbot.planning(task=user_query.query, history=history_list)
 
         print(f"[API] Response berhasil dibuat.", flush=True)
         return {"response": response}

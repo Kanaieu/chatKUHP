@@ -27,8 +27,13 @@ const Chatbot: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Adjust the payload structure based on your backend API requirements
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({
+          message: userMessage,
+          history: messages.map((m) => ({
+            sender: m.sender,
+            text: m.text,
+          })),
+        }),
       });
 
       if (!response.ok) {
