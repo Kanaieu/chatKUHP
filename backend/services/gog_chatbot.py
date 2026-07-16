@@ -281,8 +281,10 @@ class PlanningModel:
             "- 'Menghina Pancasila', 'menolak Pancasila', 'mengganti Pancasila' → TINDAKAN MENOLAK/MENGGANTI PANCASILA (Pasal 190), BUKAN unjuk rasa tanpa izin (Pasal 256).\n"
             "- 'Menghina lambang negara', 'merusak lambang negara' → PENODAAN LAMBANG NEGARA (Pasal 236), BUKAN penghinaan pemerintah secara umum (Pasal 240).\n"
             "- 'Penipuan emas', 'berat emas tidak sesuai', 'pedagang emas menipu' → PENIPUAN oleh penjual (Pasal 493), BUKAN pemalsuan cap atau logo emas (Pasal 384).\n"
-            "- 'Pencurian listrik', 'mencuri aliran listrik', 'mengambil listrik tanpa izin' → PENCURIAN (Pasal 476), BUKAN kealpaan bangunan listrik rusak (Pasal 320).\n\n"
+            "- 'Pencurian listrik', 'mencuri aliran listrik', 'mengambil listrik tanpa izin' → PENCURIAN (Pasal 476), BUKAN kealpaan bangunan listrik rusak (Pasal 320).\n"
+            "- 'Perkosaan', 'pemerkosaan', 'memaksa bersetubuh' → PERKOSAAN (Pasal 473), BUKAN perzinaan (Pasal 411).\n\n"
             "CONTOH:\n"
+            "- Cerita: 'Bagaimana hukumnya jika seseorang melakukan perkosaan terhadap seorang wanita?' -> Query: Perkosaan, memaksa bersetubuh dengan kekerasan atau ancaman, Pasal 473\n"
             "- Cerita: 'Seseorang menghasut warga agar melakukan kekerasan terhadap pejabat...' -> Query: Penghasutan tindak pidana di muka umum, hasutan melawan penguasa, Pasal 246\n"
             "- Cerita: 'Apakah penyebaran hoaks termasuk tindak pidana?' -> Query: Penyiaran berita bohong mengakibatkan kerusuhan, menyebarkan hoaks berita palsu, Pasal 263\n"
             "- Cerita: 'Ada kasus pencurian listrik oleh tetangga...' -> Query: Pencurian listrik, mengambil aliran listrik secara melawan hukum, Pasal 476\n"
@@ -374,6 +376,7 @@ class PlanningModel:
     def retrieve(
         self,
         task: str,
+        original_task: str = None
     ):
         """
         Phase 1: Identify which KUHP Article (Pasal) applies to the user's case.
@@ -401,9 +404,9 @@ class PlanningModel:
         prompt_text = PROMPTS["goal_inference"].format(context=context_info, task=task)
         valid_names = [g.name for g in relevant_goals]
 
-        # Prioritas pemilihan pasal deterministik jika pasal terdeteksi di query pencarian
+        # Prioritas pemilihan pasal deterministik jika pasal terdeteksi di query asli pengguna (original_task)
         import re
-        pasal_match = re.search(r'(?i)pasal\s*(\d+)', rewritten_task)
+        pasal_match = re.search(r'(?i)pasal\s*(\d+)', original_task or task)
         if pasal_match:
             target_pasal = f"Pasal {pasal_match.group(1)}"
             for goal in relevant_goals:
@@ -498,7 +501,7 @@ class PlanningModel:
 
         goal_choices = []
         if not goal_name:
-            goal_name, goal_choices = self.retrieve(contextualized_task)
+            goal_name, goal_choices = self.retrieve(contextualized_task, original_task=task)
 
         # 1. Expand the selected Pasal using the DFS backward chaining
         print(f"[PHASE 2] Melakukan evaluasi DFS untuk goal '{goal_name}'...", flush=True)
