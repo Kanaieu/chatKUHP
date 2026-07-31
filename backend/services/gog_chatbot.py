@@ -227,7 +227,7 @@ class PlanningModel:
         prompt = (
             "Tugas Anda adalah mengklasifikasikan pertanyaan atau pesan pengguna ke dalam salah satu dari 3 kategori berikut:\n"
             "1. 'legal new KUHP': Jika pesan berisi pertanyaan, kasus, kronologi kejadian hukum, pasal, aturan hukum, hak hukum, atau konsultasi hukum pidana/KUHP Baru.\n"
-            "2. 'legal old KUHP': Jika pesan berisi kata-kata "KUHP Lama".\n"
+            "2. 'legal old KUHP': Jika pesan berisi kata-kata "KUHP Lama" atau membahas KUHP lama.\n"
             "3. 'greeting': Jika pesan berupa sapaan, salam, perkenalan diri, ucapan terima kasih, atau penutup (misal: 'Halo', 'Hai', 'Selamat pagi', 'Terima kasih', 'Bye', 'Sampai jumpa').\n"
             "4. 'other': Jika pesan di luar hukum dan di luar sapaan, seperti pertanyaan umum tentang resep masakan, coding/pemrograman, matematika, sains, fakta umum (misal: 'siapa penemu lampu', 'bagaimana cara membuat website', 'ibu kota Perancis adalah').\n\n"
             "Format respons harus berupa JSON seperti berikut:\n"
