@@ -230,9 +230,9 @@ function Index() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 w-full max-w-lg">
                 {[
                   "Menuduh orang mencuri tanpa bukti kena pasal berapa?",
-                  "Apakah pelaku pemerkosa hewan atau bestiality dapat dihukum",
+                  "Pelaku melakukan tindakan hubungan seksual hewan atau bestiality dapat dihukum?",
                   "Apa yang dimaksud dengan tindak pidana pemerasan?",
-                  "Apa sanksi hukum bagi warga negara Indonesia yang membentuk perkumpulan dengan tujuan untuk merdeka dengan tidak mengakui kedaulatan Negara Kesatuan Republik Indonesia?",
+                  "Sanksi hukum bagi warga yang membentuk perkumpulan untuk merdeka dengan tidak mengakui kedaulatan Negara?",
                 ].map((q) => (
                   <button
                     key={q}
