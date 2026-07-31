@@ -226,12 +226,13 @@ class PlanningModel:
     def _classify_query(self, query: str) -> str:
         prompt = (
             "Tugas Anda adalah mengklasifikasikan pertanyaan atau pesan pengguna ke dalam salah satu dari 3 kategori berikut:\n"
-            "1. 'legal': Jika pesan berisi pertanyaan, kasus, kronologi kejadian hukum, pasal, aturan hukum, hak hukum, atau konsultasi hukum pidana/KUHP.\n"
-            "2. 'greeting': Jika pesan berupa sapaan, salam, perkenalan diri, ucapan terima kasih, atau penutup (misal: 'Halo', 'Hai', 'Selamat pagi', 'Terima kasih', 'Bye', 'Sampai jumpa').\n"
-            "3. 'other': Jika pesan di luar hukum dan di luar sapaan, seperti pertanyaan umum tentang resep masakan, coding/pemrograman, matematika, sains, fakta umum (misal: 'siapa penemu lampu', 'bagaimana cara membuat website', 'ibu kota Perancis adalah').\n\n"
+            "1. 'legal new KUHP': Jika pesan berisi pertanyaan, kasus, kronologi kejadian hukum, pasal, aturan hukum, hak hukum, atau konsultasi hukum pidana/KUHP Baru.\n"
+            "2. 'legal old KUHP': Jika pesan berisi kata-kata "KUHP Lama".\n"
+            "3. 'greeting': Jika pesan berupa sapaan, salam, perkenalan diri, ucapan terima kasih, atau penutup (misal: 'Halo', 'Hai', 'Selamat pagi', 'Terima kasih', 'Bye', 'Sampai jumpa').\n"
+            "4. 'other': Jika pesan di luar hukum dan di luar sapaan, seperti pertanyaan umum tentang resep masakan, coding/pemrograman, matematika, sains, fakta umum (misal: 'siapa penemu lampu', 'bagaimana cara membuat website', 'ibu kota Perancis adalah').\n\n"
             "Format respons harus berupa JSON seperti berikut:\n"
             "{\n"
-            "  \"category\": \"legal\" / \"greeting\" / \"other\",\n"
+            "  \"category\": \"legal new KUHP\" / \"legal old KUHP\" / \"greeting\" / \"other\",\n"
             "  \"reason\": \"alasan singkat\"\n"
             "}\n\n"
             f"Pesan Pengguna: {query}\n\n"
@@ -248,10 +249,10 @@ class PlanningModel:
             if resp_text.startswith("```json"):
                 resp_text = resp_text[7:-3].strip()
             data = json.loads(resp_text)
-            category = data.get("category", "legal")
+            category = data.get("category", "legal new KUHP")
             print(f"[LLM] Kategori query: {category}. Alasan: {data.get('reason')}", flush=True)
-            if category not in ["legal", "greeting", "other"]:
-                return "legal"
+            if category not in ["legal new KUHP", "legal old KUHP", "greeting", "other"]:
+                return "legal new KUHP"
             return category
         except Exception as e:
             print(f"[LLM ERROR] Gagal mengklasifikasikan query: {e}. Default ke 'legal'.", flush=True)
@@ -484,7 +485,14 @@ class PlanningModel:
 
         # 2. Classify the contextualized query (greeting, other/out-of-law, legal)
         category = self._classify_query(contextualized_task)
-        if category == "greeting":
+        if category == "legal old KUHP":
+            return {
+                "answer": "Maaf, saya hanya dapat membantu menjawab pertanyaan atau menganalisis kasus yang berkaitan dengan hukum (khususnya Hukum Pidana Indonesia Baru/KUHP Baru)",
+                "chosen_goal": None,
+                "goal_choices": [],
+                "used_preconditions": []
+            }
+        elif category == "greeting":
             return {
                 "answer": "Halo! Saya adalah asisten kecerdasan buatan khusus Hukum Pidana Indonesia. Ada yang bisa saya bantu terkait konsultasi atau pertanyaan hukum Anda?",
                 "chosen_goal": None,
