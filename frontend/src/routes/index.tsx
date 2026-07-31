@@ -222,7 +222,7 @@ function Index() {
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
                   Ajukan pertanyaan hukum Anda. Sistem akan menganalisis kasus berdasarkan{" "}
-                  <strong>Kitab Undang-Undang Hukum Pidana (KUHP)</strong> dan memberikan penjelasan yang terstruktur.
+                  <strong>Kitab Undang-Undang Hukum Pidana (KUHP Baru)</strong> dan memberikan penjelasan yang terstruktur.
                 </p>
               </div>
 
