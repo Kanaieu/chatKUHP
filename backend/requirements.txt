@@ -11,3 +11,4 @@ openai
 tiktoken
 tqdm
 cohere
+huggingface_hub
