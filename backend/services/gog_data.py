@@ -29,6 +29,35 @@ try:
 except ImportError:
     from gog_prompts import PROMPTS
 
+# ================= Embedder E5 (HF Inference API) =================
+# Model: intfloat/multilingual-e5-large -> dimensi 1024 (sama seperti Cohere v3),
+# sehingga seluruh fallback [0.0]*1024 di kode ini tetap valid.
+# E5 WAJIB prefiks: "query: " untuk kueri, "passage: " untuk dokumen.
+_HF_CLIENT = None
+
+
+def _get_hf_inference_client():
+    """Singleton InferenceClient. Disimpan di level modul agar tidak ikut ter-pickle."""
+    global _HF_CLIENT
+    if _HF_CLIENT is None:
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError:
+            raise RuntimeError("Please install huggingface_hub: pip install huggingface_hub")
+        token = os.environ.get("HF_TOKEN")
+        if not token:
+            raise RuntimeError("HF_TOKEN not set in environment.")
+        _HF_CLIENT = InferenceClient(provider="hf-inference", api_key=token)
+    return _HF_CLIENT
+
+
+# ========== Embedder E5 (lokal, sentence-transformers / GPU) ==========
+# Alternatif GRATIS untuk HF Inference API: bobot E5 dimuat SEKALI lalu embedding
+# dihitung lokal (mis. di GPU Kaggle). Tidak ada biaya per-request & tanpa DNS/API.
+# Disimpan di level modul agar TIDAK ikut ter-pickle bersama objek KB.
+_ST_MODEL = None
+
+
 class GOGNode:
     def __init__(self, name, desc, preconditions, elements, postconditions, name_emb, preconditions_emb, elements_emb, postconditions_emb):
         # name: e.g. "Pasal 362 KUHP"
@@ -79,7 +108,7 @@ class GOGKB:
         self.postconditions2nodes = {}
 
         # bookkeeping and config
-        self.doc_dir = "GoGs_Skripsi/src/optimus1/models/knowledge/"
+        self.doc_dir = "knowledge/"
         self.kb_dir = "gog_graph/"
         self.kb_file = os.path.join(self.kb_dir, "kb_kuhp.pkl")
 
@@ -126,6 +155,9 @@ class GOGKB:
         self.port = port
         self.embed_endpoint = "/v1"
         self.embedding_model = embedding_model
+        # Backend embedder: "st" = lokal sentence-transformers (GRATIS, untuk build di GPU Kaggle);
+        # "hf" = HF Inference API (berkuota/berbayar). Default "st".
+        self.embed_backend = os.environ.get("GOG_EMBED_BACKEND", "st").lower()
         if url != "":
             self.embed_url = self.url + ":" + self.port + self.embed_endpoint
         else:
@@ -312,7 +344,7 @@ class GOGKB:
             path = os.path.join(self.doc_dir, file)
             if file.lower().endswith('.jsonl'):
                 try:
-                    with open(path, 'r', encoding='utf-8') as fh:
+                    with open(path, 'r', encoding='utf-8-sig') as fh:
                         for line in fh:
                             if not line.strip(): continue
                             try:
@@ -423,6 +455,10 @@ class GOGKB:
         self.save_kb()
         print("Knowledge Base Built successfully!")
 
+    # ===== [KODE MATI / DEAD CODE] Embedder Cohere =====
+    # Tidak lagi dipanggil. Digantikan embedder E5 (HF Inference API) via
+    # _get_hf_inference_client / _hf_embed_one / hf_sync_embeddings_batch.
+    # Sengaja dipertahankan untuk kemudahan rollback.
     def _get_cohere_client(self):
         try:
             import cohere
@@ -477,6 +513,115 @@ class GOGKB:
             
         return all_embeddings
 
+    # ================= Embedder E5 (HF Inference API) =================
+    @staticmethod
+    def _e5_prefix(text, kind="passage"):
+        """E5 mensyaratkan prefiks: 'query: ' untuk kueri, 'passage: ' untuk dokumen."""
+        text = text if text else ""
+        return ("query: " if kind == "query" else "passage: ") + text
+
+    def _hf_embed_one(self, text, kind="passage", max_retries=6):
+        """Embed satu teks dgn E5 via HF Inference API -> list 1024 float (L2-normalized)."""
+        if not text or text == "None":
+            return [0.0] * 1024
+        client = _get_hf_inference_client()
+        payload = self._e5_prefix(text, kind)
+        delay = 2.0
+        for _ in range(max_retries):
+            try:
+                out = client.feature_extraction(payload, model=self.embedding_model)
+                arr = np.asarray(out, dtype=float)
+                # Amankan bentuk keluaran: (dim,) / (seq,dim) / (1,seq,dim)
+                if arr.ndim == 3:
+                    arr = arr[0]
+                if arr.ndim == 2:
+                    arr = arr.mean(axis=0)
+                vec = arr.reshape(-1)
+                norm = np.linalg.norm(vec)
+                if norm > 0:
+                    vec = vec / norm
+                return vec.tolist()
+            except Exception as e:
+                msg = str(e).lower()
+                # 503/loading = model sedang dimuat; 429 = rate limit -> backoff & retry
+                if any(s in msg for s in ["429", "rate", "503", "500", "502", "504", "loading", "timeout", "timed out"]):
+                    time.sleep(delay)
+                    delay = min(delay * 2, 30.0)
+                    continue
+                print(f"HF embed error (non-retryable): {e}")
+                break
+        print("Warning: embedding gagal, mengembalikan vektor nol.")
+        return [0.0] * 1024
+
+    def hf_sync_embeddings_batch(self, texts, kind="passage", max_workers=4):
+        """
+        'Batching' untuk HF Inference API: feature_extraction bersifat per-teks,
+        jadi throughput diperoleh via request paralel terbatas (ThreadPool) +
+        retry/backoff di _hf_embed_one. Urutan hasil dijaga sesuai input.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+        if not texts:
+            return []
+        print(f"Embedding {len(texts)} teks via HF Inference API (E5, kind='{kind}', workers={max_workers})...")
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            embeddings = list(tqdm(
+                ex.map(lambda t: self._hf_embed_one(t, kind), texts),
+                total=len(texts),
+            ))
+        return embeddings
+
+    # ---------- Embedder E5 lokal (sentence-transformers) ----------
+    def _get_st_model(self):
+        """Muat SentenceTransformer sekali (singleton level modul, tidak ter-pickle)."""
+        global _ST_MODEL
+        if _ST_MODEL is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError:
+                raise RuntimeError("Please install sentence-transformers: pip install sentence-transformers")
+            print(f"Loading local SentenceTransformer: {self.embedding_model} (unduh bobot sekali dari HF Hub)...")
+            _ST_MODEL = SentenceTransformer(self.embedding_model)
+        return _ST_MODEL
+
+    def st_embeddings_batch(self, texts, kind="passage", batch_size=64):
+        """Embedding batch lokal via GPU/CPU. Prefiks E5 + L2-normalize. Urutan dijaga."""
+        if not texts:
+            return []
+        model = self._get_st_model()
+        prefixed = [self._e5_prefix(t if t else "", kind) for t in texts]
+        embs = model.encode(
+            prefixed,
+            batch_size=batch_size,
+            normalize_embeddings=True,
+            show_progress_bar=True,
+            convert_to_numpy=True,
+        )
+        out = []
+        for t, e in zip(texts, embs):
+            if not t or t == "None":
+                out.append([0.0] * 1024)
+            else:
+                out.append(np.asarray(e, dtype=float).reshape(-1).tolist())
+        return out
+
+    def _st_embed_one(self, text, kind="query"):
+        if not text or text == "None":
+            return [0.0] * 1024
+        return self.st_embeddings_batch([text], kind=kind, batch_size=1)[0]
+
+    # ---------- Dispatcher backend (st = lokal / hf = Inference API) ----------
+    def _embed_texts_batch(self, texts, kind="passage"):
+        backend = getattr(self, "embed_backend", "st")
+        if backend == "hf":
+            return self.hf_sync_embeddings_batch(texts, kind=kind, max_workers=4)
+        return self.st_embeddings_batch(texts, kind=kind)
+
+    def _embed_one(self, text, kind="query"):
+        backend = getattr(self, "embed_backend", "st")
+        if backend == "hf":
+            return self._hf_embed_one(text, kind=kind)
+        return self._st_embed_one(text, kind=kind)
+
     def build_kb_sync(self):
         # Simplified, runnable KB builder for local testing.
         # Uses synchronous embedding instead of Batch API
@@ -498,7 +643,7 @@ class GOGKB:
             path = os.path.join(self.doc_dir, file)
             if file.lower().endswith('.jsonl'):
                 try:
-                    with open(path, 'r', encoding='utf-8') as fh:
+                    with open(path, 'r', encoding='utf-8-sig') as fh:
                         for line in fh:
                             if not line.strip(): continue
                             try:
@@ -548,7 +693,7 @@ class GOGKB:
         unique_texts_to_embed.discard("")
         unique_texts_to_embed.discard("None")
 
-        print(f"Phase 2 & 3: Generating embeddings via Cohere API for {len(unique_texts_to_embed)} unique strings...")
+        print(f"Phase 2 & 3: Generating embeddings via HF Inference API (E5) for {len(unique_texts_to_embed)} unique strings...")
         text_list = list(unique_texts_to_embed)
         text2key = {}
         for t in text_list:
@@ -557,7 +702,7 @@ class GOGKB:
 
         key2emb = {}
         if text_list:
-            embeddings_list = self.cohere_sync_embeddings_batch(text_list, batch_size=96, delay=10.0)
+            embeddings_list = self._embed_texts_batch(text_list, kind="passage")
             for t, emb in zip(text_list, embeddings_list):
                 k = text2key[t]
                 key2emb[k] = emb
@@ -654,23 +799,15 @@ class GOGKB:
         """
         Instant Single-Call Embedding for Live User Queries.
         Used by the Chatbot (query_goals) and occasionally as a fallback.
+        Kini memakai intfloat/multilingual-e5-large via HF Inference API (prefiks 'query: ').
         """
         if not text:
             return [0.0] * 1024
-            
         if not hasattr(self, "_embed_cache"):
             self._embed_cache = {}
-            
         if text in self._embed_cache:
             return self._embed_cache[text]
-        
-        client = self._get_cohere_client()
-        response = client.embed(
-            texts=[text],
-            model=self.embedding_model,
-            input_type="search_query"
-        )
-        emb = response.embeddings[0]
+        emb = self._embed_one(text, kind="query")
         self._embed_cache[text] = emb
         return emb
 
@@ -806,7 +943,7 @@ class GOGKB:
 
     # Return the top-k nodes that have goal names most similar to the query
     def query_goals(self, query, top_k=5,
-                w_text=1, w_pre=0.0, w_elem=0.0, w_post=0.0):
+                w_text=0.5, w_pre=0.2, w_elem=0.3, w_post=0.0):
         embed_query = self.embed_text(query)
         
         scores = []

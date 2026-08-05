@@ -71,7 +71,12 @@ class PlanningModel:
         self.goal_kb = GOGKB.load_kb(kb_file=kb_file)
         self.goal_kb.set_llm(url="", port="", llm=llm_model)
         
-        self.goal_kb.set_embedding(embedding_model="embed-multilingual-v3.0")
+        # Embedding QUERY di Railway (2 vCPU / 1 GB RAM): WAJIB via HF Inference API,
+        # JANGAN memuat E5 lokal (akan OOM). HF_TOKEN dibaca dari secret env Railway,
+        # persis seperti COHERE_API_KEY. Model HARUS identik dgn saat build KB (E5-large).
+        self.goal_kb.set_embedding(embedding_model="intfloat/multilingual-e5-large")
+        self.goal_kb.embed_backend = os.environ.get("GOG_EMBED_BACKEND", "hf")
+        print(f"[CHATBOT] Embedding backend: {self.goal_kb.embed_backend} | model: {self.goal_kb.embedding_model}", flush=True)
         print(f"[CHATBOT] Knowledge Base berhasil diload.", flush=True)
         
     def _call_llm_with_retry(self, prompt, system_instruction=None, temperature=0.0, is_json=False, response_schema=None, max_retries=5):
