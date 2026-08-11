@@ -366,7 +366,7 @@ class PlanningModel:
                 "subgoals": []
             }
             
-            print(f"[DFS] Berhasil mengekstrak node '{current_goal_name}': Preconditions={current_tree[current_goal_name]['preconditions']}, Postconditions={current_tree[current_goal_name]['postconditions']}", flush=True)
+            print(f"[DFS] Berhasil mengekstrak node '{current_goal_name}'", flush=True)
             
             # Extract preconditions
             preconds = current_tree[current_goal_name]["preconditions"]
@@ -537,18 +537,18 @@ class PlanningModel:
         print(f"[DEBUG DFS] Selected Hierarchy Nodes: {list(selected_hierarchy.keys())}", flush=True)
         for node_name, node_data in selected_hierarchy.items():
             preconds = node_data.get("preconditions", {})
-            print(f"[DEBUG DFS] Node '{node_name}' Preconditions: {preconds}", flush=True)
+            # print(f"[DEBUG DFS] Node '{node_name}' Preconditions: {preconds}", flush=True)
             if isinstance(preconds, dict):
                 for pc in preconds.keys():
                     if pc and pc != "None":
                         used_preconditions.add(pc)
             
             postconds = node_data.get("postconditions", {})
-            print(f"[DEBUG DFS] Node '{node_name}' Postconditions: {postconds}", flush=True)
+            # print(f"[DEBUG DFS] Node '{node_name}' Postconditions: {postconds}", flush=True)
             elements = node_data.get("elements", {})
-            print(f"[DEBUG DFS] Node '{node_name}' Elements: {elements}", flush=True)
+            # print(f"[DEBUG DFS] Node '{node_name}' Elements: {elements}", flush=True)
             
-        print(f"[DEBUG DFS] Final Used Preconditions: {used_preconditions}", flush=True)
+        # print(f"[DEBUG DFS] Final Used Preconditions: {used_preconditions}", flush=True)
 
         # 2. Construct the Legal Prompt
         system_prompt = (
@@ -591,7 +591,7 @@ class PlanningModel:
                 "answer": response.text.strip(),
                 "chosen_goal": goal_name,
                 "goal_choices": goal_choices,
-                "used_preconditions": list(used_preconditions)
+                "used_preconditions": []
             }
             
         except Exception as e:
