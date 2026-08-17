@@ -41,6 +41,92 @@ def _normalize_linebreaks(text: str) -> str:
         return text
     return _BR_PATTERN.sub("  \n", text).strip()
 
+YURISPRUDENSI_CONTOH = [
+    {
+        "kata_kunci": [
+            "penadahan", "menadah", "membeli", "harga", "di bawah harga pasar",
+            "harga tidak wajar", "barang curian", "patut diduga", "pasal 480",
+        ],
+        "identitas": "Putusan MA No. 170 K/Pid/2014 (Sugito); No. 1008 K/Pid/2016 (Yusman) — Pasal 480 ke-1 KUHP",
+        "ringkasan": (
+            "Mahkamah Agung konsisten berpendapat bahwa barang yang dijual atau dibeli di bawah "
+            "harga pasar/standar patut diduga berasal dari tindak pidana, sehingga memenuhi unsur "
+            "penadahan. Sebaliknya, bila harga sesuai pasar, dugaan itu gugur (lih. No. 770 K/Pid/2014; No. 607 K/Pid/2015)."
+        ),
+        "kaidah_hukum": (
+            "Pembelian barang dengan harga yang tidak wajar (jauh di bawah harga pasar) patut diduga "
+            "berasal dari tindak pidana dan dapat dikualifikasi sebagai penadahan."
+        ),
+    },
+    {
+        "kata_kunci": [
+            "penadahan", "kendaraan", "kendaraan bermotor", "motor", "mobil",
+            "tanpa surat", "surat kendaraan", "patut menduga", "pasal 480",
+        ],
+        "identitas": (
+            "Putusan MA No. 1586 K/Pid/2011 (Ropiah); No. 1750 K/Pid/2012 (Chandra Kirana); "
+            "No. 1056 K/Pid/2016 (H. Faruk Afero); No. 371 K/Pid/2017 (Syahrul S.) — Pasal 480 ke-1 KUHP"
+        ),
+        "ringkasan": (
+            "Membeli kendaraan bermotor tanpa surat-surat yang sah membuat pembeli seharusnya patut "
+            "menduga kendaraan berasal dari kejahatan. Namun unsur kesengajaan tidak otomatis terbukti; "
+            "terdapat pengecualian ketika pembeli beriktikad baik, mis. berulang kali menanyakan surat "
+            "(No. 1503 K/Pid/2015, Edi Mulyanto Gondes) atau barang ternyata bukan hasil kejahatan "
+            "(No. 300 K/Pid/2014, Suhadi)."
+        ),
+        "kaidah_hukum": (
+            "Pembelian kendaraan bermotor tanpa surat-surat yang sah menimbulkan dugaan patut bahwa "
+            "kendaraan tersebut berasal dari kejahatan, kecuali dapat dibuktikan adanya iktikad baik pembeli."
+        ),
+    },
+    {
+        "kata_kunci": [
+            "cek kosong", "cek", "bilyet giro", "giro", "tidak ada dana",
+            "tidak cukup dana", "penipuan", "tipu muslihat", "pasal 378",
+        ],
+        "identitas": (
+            "Yurisprudensi MA Nomor Katalog 5/Yur/Pid/2018; Putusan No. 133 K/Kr/1973; "
+            "No. 1036 K/Pid/1989 (dan sejumlah putusan lanjutan) — Pasal 378 KUHP"
+        ),
+        "ringkasan": (
+            "Membayar sesuatu dengan cek atau bilyet giro yang telah diketahui tidak ada atau tidak "
+            "cukup dananya termasuk tipu muslihat, sehingga dapat dikualifikasi sebagai penipuan. "
+            "Pandangan ini konsisten diikuti dalam banyak putusan sesudahnya."
+        ),
+        "kaidah_hukum": (
+            "Pembayaran menggunakan cek/bilyet giro kosong yang sejak awal diketahui tidak ada dananya "
+            "merupakan tipu muslihat dan dapat dikualifikasi sebagai penipuan (Pasal 378 KUHP)."
+        ),
+    },
+    # Tambahkan entri lain di sini bila menemukan yurisprudensi terverifikasi lainnya.
+]
+
+def _retrieve_yurisprudensi(task: str, top_n: int = 2) -> list:
+    """Cocokkan pertanyaan dengan contoh yurisprudensi terkurasi via irisan kata kunci."""
+    if not task:
+        return []
+    task_low = task.lower()
+    scored = []
+    for item in YURISPRUDENSI_CONTOH:
+        skor = sum(1 for kk in item.get("kata_kunci", []) if kk.lower() in task_low)
+        if skor > 0:
+            scored.append((skor, item))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [item for _, item in scored[:top_n]]
+
+def _format_yurisprudensi(items: list) -> str:
+    """Rangkai contoh yurisprudensi menjadi blok konteks untuk prompt."""
+    if not items:
+        return ""
+    blok = "CONTOH YURISPRUDENSI TERKURASI (pelengkap, di luar teks pasal KUHP):\n"
+    for i, it in enumerate(items, 1):
+        blok += (
+            f"{i}. Identitas: {it.get('identitas', '-')}\n"
+            f"   Ringkasan: {it.get('ringkasan', '-')}\n"
+            f"   Kaidah Hukum: {it.get('kaidah_hukum', '-')}\n"
+        )
+    return blok + "\n"
+
 def _encode_image(image_path: str) -> str:
     if not image_path or not os.path.exists(image_path):
         return ""
@@ -453,11 +539,15 @@ class PlanningModel:
 
                 inference = json.loads(resp_text)
                 
-                if inference.get("goal inference") in valid_names:
-                    print(f"[PHASE 1] Goal terpilih: {inference['goal inference']}", flush=True)
-                    return inference["goal inference"], valid_names
+                inferred = inference.get("goal inference")
+                if inferred == "TIDAK ADA":
+                    print("[PHASE 1] LLM menilai tidak ada pasal KUHP yang relevan -> rute ke yurisprudensi/doktrin.", flush=True)
+                    return None, valid_names
+                if inferred in valid_names:
+                    print(f"[PHASE 1] Goal terpilih: {inferred}", flush=True)
+                    return inferred, valid_names
                 else:
-                    print(f"[PHASE 1 WARNING] Goal '{inference.get('goal inference')}' tidak valid. Mengulang...", flush=True)
+                    print(f"[PHASE 1 WARNING] Goal '{inferred}' tidak valid. Mengulang...", flush=True)
 
             except Exception as e:
                 print(f"[PHASE 1 ERROR] Gagal memparsing JSON hasil inferensi: {e}", flush=True)
@@ -528,10 +618,15 @@ class PlanningModel:
                 "goal_choices": [],
                 "used_preconditions": []
             }
+        elif category == "legal beyond KUHP":
+            # Istilah asing / doktrin / yurisprudensi -> langsung ke jawaban pelengkap
+            return self._answer_beyond_kuhp(contextualized_task, history=history, reason="classifier")
 
         goal_choices = []
         if not goal_name:
-            goal_name, goal_choices = self.retrieve(contextualized_task, original_task=task)
+            return self._answer_beyond_kuhp(
+                contextualized_task, history=history, reason="no_pasal", goal_choices=goal_choices
+            )
 
         # 1. Expand the selected Pasal using the DFS backward chaining
         print(f"[PHASE 2] Melakukan evaluasi DFS untuk goal '{goal_name}'...", flush=True)
@@ -621,6 +716,66 @@ class PlanningModel:
                 "used_preconditions": list(used_preconditions)
             }
 
+    def _answer_beyond_kuhp(self, task: str, history: List[dict] = None,
+                        reason: str = "", goal_choices: list = None) -> dict:
+        """Jawaban pelengkap untuk pertanyaan hukum pidana yang tidak terpetakan ke pasal
+        KUHP Baru (istilah/asas asing, doktrin, atau yurisprudensi). Memakai contoh
+        yurisprudensi terkurasi + pengetahuan hukum umum LLM (di luar KB graf KUHP),
+        sehingga WAJIB diberi penanda transparansi."""
+        print(f"[BEYOND-KUHP] Menyusun jawaban yurisprudensi/doktrin (reason={reason})...", flush=True)
+
+        yur_items = _retrieve_yurisprudensi(task, top_n=2)
+        yur_context = _format_yurisprudensi(yur_items)
+
+        system_prompt = (
+            "You are an expert Indonesian Legal AI Assistant (Ahli Hukum Pidana).\n"
+            "Pertanyaan pengguna bersifat hukum pidana namun tidak dapat dijawab cukup dengan teks pasal "
+            "KUHP Baru (UU 1/2023). Jawab dengan pengetahuan hukum umum: doktrin, asas, istilah asing/Latin, "
+            "dan/atau yurisprudensi yang relevan.\n"
+            "ATURAN:\n"
+            "1. Jawab dalam format markdown, ringkas dan terstruktur.\n"
+            "2. Jelaskan setiap istilah asing/Latin beserta artinya dalam bahasa Indonesia.\n"
+            "3. Jika tersedia CONTOH YURISPRUDENSI TERKURASI di konteks, gunakan itu sebagai rujukan utama. "
+            "JANGAN mengarang nomor putusan atau identitas lain di luar yang tersedia; bila tidak ada, jawab pada "
+            "tataran doktrin/asas secara umum tanpa mengarang putusan.\n"
+            "4. Awali jawaban dengan SATU kalimat penanda bahwa jawaban ini melengkapi teks KUHP Baru "
+            "dengan doktrin/yurisprudensi, bukan kutipan langsung pasal.\n"
+        )
+
+        history_text = ""
+        if history:
+            history_text = "RIWAYAT PERCAKAPAN SEBELUMNYA:\n"
+            for msg in history:
+                role = "User" if msg.get("role") == "user" else "Asisten"
+                history_text += f"{role}: {msg.get('content')}\n"
+            history_text += "\n"
+
+        user_content = f"{history_text}{yur_context}PERTANYAAN:\n{task}\n\nJawaban:"
+
+        try:
+            response = self._call_llm_with_retry(
+                prompt=user_content,
+                system_instruction=system_prompt,
+                temperature=self.temperature
+            )
+            label = "Yurisprudensi/Doktrin (di luar pasal KUHP Baru)"
+            if yur_items:
+                label = f"Yurisprudensi terkurasi: {yur_items[0].get('identitas', label)}"
+            return {
+                "answer": _normalize_linebreaks(response.text),
+                "chosen_goal": label,
+                "goal_choices": goal_choices or [],
+                "used_preconditions": []
+            }
+        except Exception as e:
+            print(f"[BEYOND-KUHP ERROR] {e}", flush=True)
+            return {
+                "answer": "Maaf, terjadi kesalahan saat menyusun jawaban pelengkap.",
+                "chosen_goal": None,
+                "goal_choices": goal_choices or [],
+                "used_preconditions": []
+            }
+
     def getcontext(self, task: str):
         """
         Retrieval-only pipeline untuk evaluation (RAGAS).
@@ -631,6 +786,13 @@ class PlanningModel:
 
         # Phase 1: retrieve goal
         goal_name, goal_choices = self.retrieve(task)
+        if not goal_name:
+            return {
+                "chosen_goal": None,
+                "goal_choices": goal_choices,
+                "contexts": {},
+                "rewritten_query": getattr(self, "last_rewritten_query", ""),
+            }
 
         # Phase 2: DFS + reduce
         print(f"[GETCONTEXT] Melakukan DFS untuk goal '{goal_name}'...", flush=True)

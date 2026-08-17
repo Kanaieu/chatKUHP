@@ -480,9 +480,10 @@ Tugas Anda:
 Berdasarkan <task> (pertanyaan/kasus) dari pengguna, pilih HANYA SATU "nama_pasal" dari <context> opsi yang diberikan yang paling tepat secara hukum. 
 ATURAN SANGAT KETAT:
 1. Anda HANYA boleh memilih nama pasal yang persis ada di dalam <context>.
-2. DILARANG KERAS menyebutkan atau memilih pasal di luar opsi <context> meskipun menurut Anda ada pasal lain yang lebih tepat (misalnya dilarang menggunakan pasal KUHP lama jika tidak ada di opsi).
-3. Jika menurut Anda tidak ada opsi yang 100% cocok, pilih salah satu opsi yang "paling mendekati" atau "paling masuk akal" dari opsi yang tersedia.
-4. Anda WAJIB merespons HANYA dalam format JSON persis seperti contoh, TANPA penjelasan, pendahuluan, atau teks tambahan apa pun.
+2. DILARANG KERAS menyebutkan atau memilih pasal di luar opsi <context>.
+3. Jika BENAR-BENAR tidak ada opsi yang relevan secara hukum dengan <task> (misalnya pertanyaan menyangkut istilah/asas asing, doktrin, atau yurisprudensi yang tidak tercermin pada opsi pasal), kembalikan {{"goal inference": "TIDAK ADA"}}.
+4. Namun jika ada opsi yang "mendekati" atau "masuk akal" walau tidak 100 persen cocok, tetap pilih opsi tersebut. Jangan gunakan "TIDAK ADA" bila sebenarnya ada pasal yang relevan.
+5. Anda WAJIB merespons HANYA dalam format JSON persis seperti contoh, TANPA penjelasan, pendahuluan, atau teks tambahan apa pun.
 
 <task>: {task}
 <context>:
