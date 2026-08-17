@@ -2,6 +2,7 @@ import base64
 from typing import List
 import json
 import os
+import re
 import sys
 import time
 import traceback
@@ -27,6 +28,18 @@ try:
 except ImportError:
     from services.gog_prompts import PROMPTS
 
+# Pola tag <br>, <br/>, <br /> (case-insensitive)
+_BR_PATTERN = re.compile(r"(?i)<\s*br\s*/?\s*>")
+
+def _normalize_linebreaks(text: str) -> str:
+    """Ubah tag <br> literal dari keluaran LLM menjadi hard line break markdown.
+
+    '  \n' (dua spasi + newline) adalah hard break markdown yang dirender
+    react-markdown/remark-gfm sebagai pergantian baris, tanpa perlu rehype-raw.
+    """
+    if not text:
+        return text
+    return _BR_PATTERN.sub("  \n", text).strip()
 
 def _encode_image(image_path: str) -> str:
     if not image_path or not os.path.exists(image_path):
@@ -588,7 +601,7 @@ class PlanningModel:
             )
             print(f"[PHASE 2] Response akhir berhasil disusun.", flush=True)
             return {
-                "answer": response.text.strip(),
+                "answer": _normalize_linebreaks(response.text),
                 "chosen_goal": goal_name,
                 "goal_choices": goal_choices,
                 "used_preconditions": []

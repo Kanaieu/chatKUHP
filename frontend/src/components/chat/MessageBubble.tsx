@@ -4,6 +4,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ThinkingSteps, type ThinkingStep } from "./ThinkingSteps";
 
+const normalizeBr = (text: string) => text.replace(/<\s*br\s*\/?\s*>/gi, "  \n");
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -51,7 +53,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               </>
             ) : (
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content + (message.isStreaming ? " ▍" : "")}
+                {normalizeBr(message.content) + (message.isStreaming ? " ▍" : "")}
               </ReactMarkdown>
             )}
           </div>
