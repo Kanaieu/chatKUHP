@@ -243,14 +243,18 @@ class PlanningModel:
 
     def _classify_query(self, query: str) -> str:
         prompt = (
-            "Tugas Anda adalah mengklasifikasikan pertanyaan atau pesan pengguna ke dalam salah satu dari 4 kategori berikut:\n"
-            "1. 'legal new KUHP': Jika pesan berisi pertanyaan, kasus, kronologi kejadian hukum, pasal, aturan hukum, hak hukum, atau konsultasi hukum pidana/KUHP Baru.\n"
-            "2. 'legal old KUHP': Jika pesan berisi kata-kata 'KUHP Lama' atau membahas KUHP lama.\n"
-            "3. 'greeting': Jika pesan berupa sapaan, salam, perkenalan diri, ucapan terima kasih, atau penutup (misal: 'Halo', 'Hai', 'Selamat pagi', 'Terima kasih', 'Bye', 'Sampai jumpa').\n"
-            "4. 'other': Jika pesan di luar hukum dan di luar sapaan, seperti pertanyaan umum tentang resep masakan, coding/pemrograman, matematika, sains, fakta umum (misal: 'siapa penemu lampu', 'bagaimana cara membuat website', 'ibu kota Perancis adalah').\n\n"
+            "Tugas Anda adalah mengklasifikasikan pertanyaan atau pesan pengguna ke dalam salah satu dari 5 kategori berikut:\n"
+            "1. 'legal new KUHP': Pertanyaan/kasus/pasal/aturan hukum pidana yang dapat dijawab langsung dengan pasal KUHP Baru (UU 1/2023).\n"
+            "2. 'legal beyond KUHP': Pertanyaan hukum pidana yang RELEVAN namun kemungkinan tidak cukup dijawab hanya dengan teks pasal KUHP Baru, yaitu: "
+            "(a) istilah atau asas hukum asing/Latin (misal mens rea, actus reus, asas legalitas/nullum crimen sine lege, in dubio pro reo, ne bis in idem); "
+            "(b) doktrin atau teori hukum pidana; atau (c) permintaan yurisprudensi/putusan pengadilan/preseden.\n"
+            "3. 'legal old KUHP': Jika pesan berisi kata-kata 'KUHP Lama' atau membahas KUHP lama.\n"
+            "4. 'greeting': Sapaan, salam, perkenalan diri, ucapan terima kasih, atau penutup.\n"
+            "5. 'other': Pesan DI LUAR hukum sama sekali (resep masakan, coding, matematika, sains, fakta umum). "
+            "CATATAN PENTING: istilah hukum asing, doktrin hukum, dan yurisprudensi TIDAK boleh diklasifikasikan sebagai 'other'.\n\n"
             "Format respons harus berupa JSON seperti berikut:\n"
             "{\n"
-            "  \"category\": \"legal new KUHP\" / \"legal old KUHP\" / \"greeting\" / \"other\",\n"
+            "  \"category\": \"legal new KUHP\" / \"legal beyond KUHP\" / \"legal old KUHP\" / \"greeting\" / \"other\",\n"
             "  \"reason\": \"alasan singkat\"\n"
             "}\n\n"
             f"Pesan Pengguna: {query}\n\n"
@@ -269,7 +273,7 @@ class PlanningModel:
             data = json.loads(resp_text)
             category = data.get("category", "legal new KUHP")
             print(f"[LLM] Kategori query: {category}. Alasan: {data.get('reason')}", flush=True)
-            if category not in ["legal new KUHP", "legal old KUHP", "greeting", "other"]:
+            if category not in ["legal new KUHP", "legal beyond KUHP", "legal old KUHP", "greeting", "other"]:
                 return "legal new KUHP"
             return category
         except Exception as e:
