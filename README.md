@@ -230,7 +230,7 @@ Proyek ini merupakan bagian dari penelitian skripsi mengenai penerapan kerangka 
 ```bibtex
 @thesis{chatkuhp,
   title  = {ChatKUHP: Goal-oriented Graphs RAG untuk Kitab Undang-Undang Hukum Pidana Indonesia},
-  author = {Supardi Muhammad},
+  author = {Muhammad Tsaqiif Ash-Shiddiq},
   year   = {2026}
 }
 ```
