@@ -223,18 +223,4 @@ Jawaban pada jalur ini selalu diberi penanda bahwa isinya **melengkapi** teks KU
 
 ---
 
-## Sitasi & Lisensi
-
-Proyek ini merupakan bagian dari penelitian skripsi mengenai penerapan kerangka kerja *Goal-oriented Graphs* untuk RAG pada domain hukum pidana Indonesia.
-
-```bibtex
-@thesis{chatkuhp,
-  title  = {ChatKUHP: Goal-oriented Graphs RAG untuk Kitab Undang-Undang Hukum Pidana Indonesia},
-  author = {Muhammad Tsaqiif Ash-Shiddiq},
-  year   = {2026}
-}
-```
-
-**Lisensi:** tentukan lisensi Anda (mis. MIT) pada berkas `LICENSE`.
-
 > Disclaimer: ChatKUHP adalah prototipe penelitian dan **bukan pengganti nasihat hukum profesional**.
