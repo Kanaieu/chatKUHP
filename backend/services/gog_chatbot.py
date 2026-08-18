@@ -739,7 +739,7 @@ class PlanningModel:
             "JANGAN mengarang nomor putusan atau identitas lain di luar yang tersedia; bila tidak ada, jawab pada "
             "tataran doktrin/asas secara umum tanpa mengarang putusan.\n"
             "4. Awali jawaban dengan SATU kalimat penanda bahwa jawaban ini melengkapi teks KUHP Baru "
-            "dengan doktrin/yurisprudensi, bukan kutipan langsung pasal.\n"
+            "dengan doktrin/yurisprudensi, bukan kutipan langsung pasal. Atau Jika definisi Istilah tidak usah ada Kalimat Penanda.\n"
         )
 
         history_text = ""
